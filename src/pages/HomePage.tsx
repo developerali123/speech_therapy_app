@@ -11,7 +11,7 @@ import { getAllRecordings } from '../storage/recordingRepository';
 import { PracticeSession, Recording } from '../types';
 import { calculateStatistics } from '../utils/statistics';
 import { formatDateLabel, formatTime } from '../utils/dates';
-import { ArrowRight, CheckCircle2, Flame, Clock } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Flame, Clock, Sliders } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -114,7 +114,31 @@ export const HomePage: React.FC = () => {
         </div>
 
         {activeExercise ? (
-          <ExerciseCard exercise={activeExercise} />
+          <div className="space-y-3">
+            <ExerciseCard exercise={activeExercise} />
+            <div className="flex items-center justify-between p-3.5 bg-teal-50/70 border border-teal-200/80 rounded-2xl">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0">
+                  <Sliders className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-teal-900 block leading-tight">
+                    Therapist Calibration Active
+                  </span>
+                  <span className="text-[11px] text-teal-700">
+                    4 correct & 3 contrast references for &ldquo;کا&rdquo;
+                  </span>
+                </div>
+              </div>
+              <Link
+                to="/calibration"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-900 transition"
+              >
+                <span>Tune / Add</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
         ) : loadingExercise ? (
           <Card className="p-8 text-center text-xs text-slate-400">Loading target exercise...</Card>
         ) : null}

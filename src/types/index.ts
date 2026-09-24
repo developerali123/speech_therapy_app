@@ -22,6 +22,51 @@ export interface PracticeSession {
 }
 
 export type TherapistResult = 'CORRECT' | 'INCORRECT' | 'UNCERTAIN';
+export type PronunciationVerdict = 'CORRECT' | 'INCORRECT' | 'UNCERTAIN';
+
+export interface AudioFeatures {
+  speechDuration: number;
+  rmsEnergy: number;
+  zeroCrossingRate: number;
+  spectralCentroid: number;
+  spectralRolloff: number;
+  bandEnergies: [number, number, number, number]; // [Low (100-600Hz), Mid (600-1800Hz), Mid-High (1800-3500Hz), High (3500-8000Hz)]
+  transientRatio: number;
+}
+
+export interface PronunciationResult {
+  result: PronunciationVerdict;
+  similarity: number; // 0.0 to 1.0
+  reason: string;
+  details?: {
+    correctSimilarity: number;
+    incorrectSimilarity: number;
+    speechDuration: number;
+    speechEnergy: number;
+    zeroCrossingRate: number;
+    spectralCentroid: number;
+  };
+}
+
+export interface CalibrationExample {
+  id: string;
+  exerciseId: string;
+  label: 'CORRECT' | 'INCORRECT';
+  blob: Blob;
+  duration: number;
+  mimeType: string;
+  createdAt: string;
+  note?: string;
+  features?: AudioFeatures;
+}
+
+export interface CalibrationSettings {
+  similarityThreshold: number; // e.g. 0.65
+  marginVsIncorrect: number;    // e.g. 0.08
+  minSpeechEnergy: number;      // e.g. 0.012
+  minSpeechDuration: number;    // e.g. 0.15
+  maxSpeechDuration: number;    // e.g. 2.5
+}
 
 export interface Recording {
   id: string;
@@ -32,6 +77,9 @@ export interface Recording {
   mimeType: string;
   createdAt: string;
   attemptNumber?: number;
+  autoResult?: PronunciationVerdict;
+  similarity?: number;
+  analysisReason?: string;
   therapistResult?: TherapistResult;
   therapistRemarks?: string;
   therapistReviewedAt?: string;
@@ -40,6 +88,7 @@ export interface Recording {
 export interface AppSettings {
   dailyGoal: number;
   userName?: string;
+  calibration?: CalibrationSettings;
 }
 
 export interface ExportRecordingItem {
@@ -50,6 +99,9 @@ export interface ExportRecordingItem {
   mimeType: string;
   createdAt: string;
   attemptNumber?: number;
+  autoResult?: PronunciationVerdict;
+  similarity?: number;
+  analysisReason?: string;
   therapistResult?: TherapistResult;
   therapistRemarks?: string;
   therapistReviewedAt?: string;

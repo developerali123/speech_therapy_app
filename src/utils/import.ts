@@ -105,6 +105,9 @@ export async function importPracticeData(jsonText: string, replaceExisting: bool
         mimeType: item.mimeType || 'audio/webm',
         createdAt: item.createdAt,
         attemptNumber: item.attemptNumber,
+        autoResult: item.autoResult,
+        similarity: item.similarity,
+        analysisReason: item.analysisReason,
         therapistResult: item.therapistResult,
         therapistRemarks: item.therapistRemarks,
         therapistReviewedAt: item.therapistReviewedAt

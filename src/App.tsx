@@ -8,6 +8,7 @@ import { SessionDetailsPage } from './pages/SessionDetailsPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
+import { CalibrationPage } from './pages/CalibrationPage';
 
 export const App: React.FC = () => {
   return (
@@ -18,6 +19,7 @@ export const App: React.FC = () => {
           <Route path="/home" element={<HomePage />} />
           <Route path="/practice" element={<PracticePage />} />
           <Route path="/practice/:exerciseId" element={<PracticePage />} />
+          <Route path="/calibration" element={<CalibrationPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/history/:sessionId" element={<SessionDetailsPage />} />
           <Route path="/progress" element={<ProgressPage />} />

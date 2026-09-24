@@ -33,6 +33,11 @@ export async function getAllSessions(): Promise<PracticeSession[]> {
   });
 }
 
+export async function getLatestInProgressSession(exerciseId: string): Promise<PracticeSession | undefined> {
+  const all = await getAllSessions();
+  return all.find(s => s.exerciseId === exerciseId && s.status === 'IN_PROGRESS');
+}
+
 export async function updateSession(session: PracticeSession): Promise<void> {
   const { store } = await getStore(STORES.SESSIONS, 'readwrite');
   return new Promise((resolve, reject) => {

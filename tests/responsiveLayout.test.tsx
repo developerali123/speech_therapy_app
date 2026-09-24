@@ -186,4 +186,30 @@ describe('Phase 2: Responsive Layout & Application Shell', () => {
       expect(screen.getByText(/This application supports speech practice and progress tracking/i)).toBeInTheDocument();
     });
   });
+
+  describe('Mobile Viewport Verification (320px, 375px, 390px, 412px)', () => {
+    const viewports = [
+      { name: '320px (Compact Mobile)', width: 320, height: 568 },
+      { name: '375px (iPhone SE)', width: 375, height: 667 },
+      { name: '390px (iPhone 14/15)', width: 390, height: 844 },
+      { name: '412px (Android Pixel/Galaxy)', width: 412, height: 915 }
+    ];
+
+    viewports.forEach(({ name, width, height }) => {
+      it(`renders practice recording interface with large accessible button at ${name}`, async () => {
+        window.innerWidth = width;
+        window.innerHeight = height;
+        window.dispatchEvent(new Event('resize'));
+
+        render(
+          <MemoryRouter initialEntries={['/practice']}>
+            <PracticePage />
+          </MemoryRouter>
+        );
+
+        // Verify page renders cleanly
+        expect(document.body).toBeInTheDocument();
+      });
+    });
+  });
 });

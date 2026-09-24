@@ -1,11 +1,12 @@
 const DB_NAME = 'speech-practice-assistant';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export const STORES = {
   EXERCISES: 'exercises',
   SESSIONS: 'sessions',
   RECORDINGS: 'recordings',
-  SETTINGS: 'settings'
+  SETTINGS: 'settings',
+  CALIBRATION: 'calibration'
 } as const;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -49,6 +50,13 @@ export function openAppDatabase(): Promise<IDBDatabase> {
       // Settings Store
       if (!db.objectStoreNames.contains(STORES.SETTINGS)) {
         db.createObjectStore(STORES.SETTINGS, { keyPath: 'id' });
+      }
+
+      // Calibration Reference Examples Store
+      if (!db.objectStoreNames.contains(STORES.CALIBRATION)) {
+        const calStore = db.createObjectStore(STORES.CALIBRATION, { keyPath: 'id' });
+        calStore.createIndex('exerciseId', 'exerciseId', { unique: false });
+        calStore.createIndex('label', 'label', { unique: false });
       }
     };
 

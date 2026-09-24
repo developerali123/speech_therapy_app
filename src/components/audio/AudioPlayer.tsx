@@ -7,6 +7,7 @@ interface AudioPlayerProps {
   src?: string;
   autoPlay?: boolean;
   className?: string;
+  recordedDuration?: number;
   onEnded?: () => void;
 }
 
@@ -15,6 +16,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   src,
   autoPlay = false,
   className = '',
+  recordedDuration,
   onEnded
 }) => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -29,8 +31,17 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     let createdUrl = '';
 
     if (blob) {
-      createdUrl = URL.createObjectURL(blob);
-      setAudioUrl(createdUrl);
+      try {
+        if (typeof window !== 'undefined' && window.URL && typeof window.URL.createObjectURL === 'function') {
+          createdUrl = window.URL.createObjectURL(blob);
+          setAudioUrl(createdUrl);
+        } else if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
+          createdUrl = URL.createObjectURL(blob);
+          setAudioUrl(createdUrl);
+        }
+      } catch (err) {
+        console.warn('Audio createObjectURL error:', err);
+      }
     } else if (src) {
       setAudioUrl(src);
     } else {
@@ -39,7 +50,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
     return () => {
       if (createdUrl) {
-        URL.revokeObjectURL(createdUrl);
+        try {
+          URL.revokeObjectURL(createdUrl);
+        } catch {
+          // ignore
+        }
       }
     };
   }, [blob, src]);
@@ -99,9 +114,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   };
 
 
+  const effectiveDuration = (duration > 0 && isFinite(duration)) ? duration : (recordedDuration && recordedDuration > 0 ? recordedDuration : 0);
+
   return (
     <div
-      className={`bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 flex flex-col gap-2.5 ${className}`}
+      className={`bg-slate-50 border border-slate-200/90 rounded-2xl p-3 sm:p-4 flex flex-col gap-2.5 ${className}`}
       role="region"
       aria-label="Audio playback controls"
     >
@@ -116,15 +133,26 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         onEnded={handleAudioEnded}
       />
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 sm:gap-3">
         {/* Play/Pause Button */}
         <button
           type="button"
           onClick={togglePlay}
-          className="w-11 h-11 rounded-xl bg-teal-600 hover:bg-teal-700 text-white flex items-center justify-center transition-all duration-150 active:scale-95 shadow-sm shadow-teal-700/20 cursor-pointer shrink-0"
+          id="play-recording-btn"
+          className="h-11 px-4 rounded-xl bg-teal-600 hover:bg-teal-700 text-white flex items-center justify-center gap-2 transition-all duration-150 active:scale-95 shadow-sm shadow-teal-700/20 cursor-pointer shrink-0 font-semibold text-sm touch-manipulation focus:outline-none focus:ring-2 focus:ring-teal-400"
           aria-label={isPlaying ? 'Pause recording' : 'Play recording'}
         >
-          {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
+          {isPlaying ? (
+            <>
+              <Pause className="w-4 h-4 fill-current" />
+              <span>Pause</span>
+            </>
+          ) : (
+            <>
+              <Play className="w-4 h-4 fill-current ml-0.5" />
+              <span>Play</span>
+            </>
+          )}
         </button>
 
         {/* Replay Button */}
@@ -133,6 +161,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           onClick={handleReplay}
           className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors active:scale-95 cursor-pointer shrink-0"
           aria-label="Replay recording from start"
+          title="Replay from start"
         >
           <RotateCcw className="w-4 h-4" />
         </button>
@@ -143,7 +172,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             <input
               type="range"
               min="0"
-              max={duration || 1}
+              max={effectiveDuration || 1}
               step="0.01"
               value={currentTime}
               onChange={handleSeek}
@@ -153,7 +182,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           </div>
           <div className="flex justify-between items-center text-[11px] font-mono text-slate-500 mt-1">
             <span>{formatDurationSeconds(currentTime)}</span>
-            <span>{formatDurationSeconds(duration)}</span>
+            <span>{formatDurationSeconds(effectiveDuration)}</span>
           </div>
         </div>
 

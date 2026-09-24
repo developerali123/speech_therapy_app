@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { PracticeSession, Recording } from '../types';
 import {
   createSession,
-  updateSession
+  updateSession,
+  getLatestInProgressSession
 } from '../storage/sessionRepository';
 import {
-  createRecording
+  createRecording,
+  getRecordingsBySession
 } from '../storage/recordingRepository';
 
 interface UsePracticeSessionOptions {
@@ -22,23 +24,53 @@ export function usePracticeSession({
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Initialize or resume session
-  const initSession = useCallback(async () => {
+  // Initialize or resume session from IndexedDB
+  const initSession = useCallback(async (forceNew = false) => {
     setLoading(true);
-    const newSession: PracticeSession = {
-      id: `session-${Date.now()}`,
-      exerciseId,
-      startedAt: new Date().toISOString(),
-      status: 'IN_PROGRESS',
-      attemptCount: 0,
-      targetAttempts
-    };
-    await createSession(newSession);
-    setSession(newSession);
-    setRecordings([]);
-    setIsCompleted(false);
-    setLoading(false);
-    return newSession;
+    try {
+      if (!forceNew) {
+        const inProgress = await getLatestInProgressSession(exerciseId);
+        if (inProgress) {
+          const existingRecs = await getRecordingsBySession(inProgress.id);
+          setSession(inProgress);
+          setRecordings(existingRecs);
+          setIsCompleted(inProgress.status === 'COMPLETED');
+          setLoading(false);
+          return inProgress;
+        }
+      }
+
+      // If forceNew and there was an inProgress session, mark it completed/abandoned
+      if (forceNew) {
+        const inProgress = await getLatestInProgressSession(exerciseId);
+        if (inProgress) {
+          await updateSession({
+            ...inProgress,
+            status: inProgress.attemptCount > 0 ? 'COMPLETED' : 'ABANDONED',
+            completedAt: new Date().toISOString()
+          });
+        }
+      }
+
+      const newSession: PracticeSession = {
+        id: `session-${Date.now()}`,
+        exerciseId,
+        startedAt: new Date().toISOString(),
+        status: 'IN_PROGRESS',
+        attemptCount: 0,
+        targetAttempts
+      };
+      await createSession(newSession);
+      setSession(newSession);
+      setRecordings([]);
+      setIsCompleted(false);
+      setLoading(false);
+      return newSession;
+    } catch (err) {
+      console.error('Failed to init practice session:', err);
+      setLoading(false);
+      return null;
+    }
   }, [exerciseId, targetAttempts]);
 
   useEffect(() => {
@@ -46,7 +78,12 @@ export function usePracticeSession({
   }, [initSession]);
 
   const saveAttempt = useCallback(
-    async (audioBlob: Blob, duration: number, mimeType: string): Promise<Recording | null> => {
+    async (
+      audioBlob: Blob,
+      duration: number,
+      mimeType: string,
+      analysis?: import('../types').PronunciationResult
+    ): Promise<Recording | null> => {
       if (!session) return null;
 
       const nextAttemptNumber = session.attemptCount + 1;
@@ -58,7 +95,10 @@ export function usePracticeSession({
         duration,
         mimeType,
         createdAt: new Date().toISOString(),
-        attemptNumber: nextAttemptNumber
+        attemptNumber: nextAttemptNumber,
+        autoResult: analysis?.result,
+        similarity: analysis?.similarity,
+        analysisReason: analysis?.reason
       };
 
       await createRecording(newRecording);
@@ -98,8 +138,12 @@ export function usePracticeSession({
   }, [session]);
 
   const restartSession = useCallback(async () => {
-    return await initSession();
+    return await initSession(true);
   }, [initSession]);
+
+  const audioCorrectCount = recordings.filter(r => r.autoResult === 'CORRECT').length;
+  const audioIncorrectCount = recordings.filter(r => r.autoResult === 'INCORRECT').length;
+  const audioUncertainCount = recordings.filter(r => r.autoResult === 'UNCERTAIN').length;
 
   return {
     session,
@@ -109,6 +153,9 @@ export function usePracticeSession({
     targetAttempts: session?.targetAttempts || targetAttempts,
     isCompleted,
     loading,
+    audioCorrectCount,
+    audioIncorrectCount,
+    audioUncertainCount,
     saveAttempt,
     completeSessionManually,
     restartSession

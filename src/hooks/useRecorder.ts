@@ -72,7 +72,7 @@ export function useRecorder(): RecorderHookResult {
   const startRecording = useCallback(async () => {
     if (!isSupported) {
       setState('error');
-      setErrorMessage('Audio recording is not supported in this browser. Please use Chrome, Safari, or Firefox.');
+      setErrorMessage('Audio recording is not supported in this browser. Please use Chrome, Safari, Edge, or Firefox.');
       return;
     }
 
@@ -88,14 +88,26 @@ export function useRecorder(): RecorderHookResult {
           autoGainControl: true
         }
       });
+
+      // Verify that at least one audio track exists
+      if (!stream.getAudioTracks() || stream.getAudioTracks().length === 0) {
+        throw new DOMException('No audio tracks found', 'NotFoundError');
+      }
+
       mediaStreamRef.current = stream;
 
       const chosenMime = getSupportedMimeType();
-      const options: MediaRecorderOptions = chosenMime ? { mimeType: chosenMime } : {};
-      const recorder = new MediaRecorder(stream, options);
+      let recorder: MediaRecorder;
+      try {
+        const options: MediaRecorderOptions = chosenMime ? { mimeType: chosenMime } : {};
+        recorder = new MediaRecorder(stream, options);
+      } catch {
+        // Fallback without explicit mimeType if specific codec parameter is rejected by browser engine
+        recorder = new MediaRecorder(stream);
+      }
+
       mediaRecorderRef.current = recorder;
       setMimeType(recorder.mimeType || chosenMime || 'audio/webm');
-
       audioChunksRef.current = [];
 
       recorder.ondataavailable = (event) => {
@@ -109,7 +121,15 @@ export function useRecorder(): RecorderHookResult {
         stopTracks();
 
         const actualDuration = (Date.now() - startTimeRef.current) / 1000;
-        setDuration(Math.max(0.1, actualDuration));
+        const finalDuration = Math.max(0.1, Number(actualDuration.toFixed(2)));
+        setDuration(finalDuration);
+
+        // Check for captured audio
+        if (audioChunksRef.current.length === 0) {
+          setState('error');
+          setErrorMessage('Recording failure: No audio data was captured. Please speak into your microphone and try again.');
+          return;
+        }
 
         const finalBlob = new Blob(audioChunksRef.current, {
           type: recorder.mimeType || chosenMime || 'audio/webm'
@@ -123,10 +143,10 @@ export function useRecorder(): RecorderHookResult {
         clearTimer();
         stopTracks();
         setState('error');
-        setErrorMessage('An unexpected recording error occurred. Please try again.');
+        setErrorMessage('Recording failure: could not capture audio. Please try again.');
       };
 
-      recorder.start(100); // 100ms timeslices for prompt collection
+      recorder.start(100); // 100ms timeslices for reliable collection
       startTimeRef.current = Date.now();
       setState('recording');
 
@@ -148,9 +168,15 @@ export function useRecorder(): RecorderHookResult {
           setErrorMessage('No microphone was found on this device. Please connect an audio input.');
         } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
           setErrorMessage('Microphone is busy or already in use by another application.');
+        } else if (err.name === 'NotSupportedError') {
+          setErrorMessage('MediaRecorder is unsupported or the selected audio format is not supported in this browser.');
+        } else if (err.name === 'SecurityError') {
+          setErrorMessage('Microphone access blocked due to security restrictions.');
         } else {
           setErrorMessage('Could not access microphone. Please check your browser audio settings.');
         }
+      } else if (err instanceof Error && err.name === 'NotSupportedError') {
+        setErrorMessage('MediaRecorder is unsupported or the selected audio format is not supported in this browser.');
       } else {
         setErrorMessage('Could not start recording. Please try again.');
       }
@@ -160,9 +186,16 @@ export function useRecorder(): RecorderHookResult {
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       setState('stopping');
-      mediaRecorderRef.current.stop();
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        clearTimer();
+        stopTracks();
+        setState('error');
+        setErrorMessage('Recording failure while stopping. Please try again.');
+      }
     }
-  }, []);
+  }, [clearTimer, stopTracks]);
 
   // Cleanup on unmount
   useEffect(() => {
