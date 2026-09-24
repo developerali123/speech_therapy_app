@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d9488" />
+      <stop offset="100%" stop-color="#0f766e" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#grad)" />
+  <!-- Wave circles -->
+  <circle cx="256" cy="230" r="160" fill="none" stroke="#99f6e4" stroke-width="12" opacity="0.35" />
+  <circle cx="256" cy="230" r="120" fill="none" stroke="#ccfbf1" stroke-width="14" opacity="0.5" />
+  <!-- Microphone body -->
+  <rect x="216" y="140" width="80" height="150" rx="40" fill="#ffffff" />
+  <!-- Stand curve -->
+  <path d="M176 230 C176 300 336 300 336 230" fill="none" stroke="#ffffff" stroke-width="24" stroke-linecap="round" />
+  <!-- Stand base -->
+  <line x1="256" y1="300" x2="256" y2="360" stroke="#ffffff" stroke-width="24" stroke-linecap="round" />
+  <line x1="200" y1="360" x2="312" y2="360" stroke="#ffffff" stroke-width="24" stroke-linecap="round" />
+</svg>
