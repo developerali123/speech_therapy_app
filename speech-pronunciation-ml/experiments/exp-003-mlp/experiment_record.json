@@ -1,0 +1,228 @@
+{
+  "experiment_id": "exp-003-mlp",
+  "timestamp": "2026-10-02T18:58:42.463632Z",
+  "model_architecture": {
+    "feature_extractor": "facebook/wav2vec2-xls-r-300m (Frozen + Mean Temporal Pooling)",
+    "classifier": "SmallMLP (1024 -> 64 -> 1, ReLU)",
+    "pooling": "mean_temporal_pooling"
+  },
+  "hyperparameters": {
+    "hidden_dim": 64,
+    "lr": 0.02,
+    "epochs": 180,
+    "activation": "relu"
+  },
+  "dataset": {
+    "version": 1,
+    "total_examples": 72,
+    "targets": [
+      "کا",
+      "کی",
+      "کے",
+      "کو"
+    ],
+    "class_distribution": {
+      "CORRECT": 39,
+      "INCORRECT": 33
+    },
+    "train_count": 48,
+    "val_count": 9,
+    "test_count": 15
+  },
+  "validation_metrics": {
+    "total_samples": 9,
+    "accuracy": 0.4444,
+    "precision": 0.4444,
+    "recall": 1.0,
+    "f1_score": 0.6154,
+    "specificity": 0.0,
+    "roc_auc": 0.2,
+    "class_balance": {
+      "positive_count_correct": 4,
+      "negative_count_incorrect": 5,
+      "positive_ratio": 0.4444
+    },
+    "confusion_matrix": {
+      "tp": 4,
+      "tn": 0,
+      "fp": 5,
+      "fn": 0,
+      "matrix_2x2": [
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          4
+        ]
+      ],
+      "labels": [
+        "INCORRECT",
+        "CORRECT"
+      ]
+    },
+    "error_analysis": {
+      "total_errors": 5,
+      "error_rate": 0.5556,
+      "false_positive_count": 5,
+      "false_negative_count": 0,
+      "borderline_uncertain_count": 9,
+      "false_positives": [
+        {
+          "index": 0,
+          "target": "کو",
+          "predicted_prob": 0.59089,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 1,
+          "target": "کو",
+          "predicted_prob": 0.5899,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 3,
+          "target": "کا",
+          "predicted_prob": 0.591,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 5,
+          "target": "کا",
+          "predicted_prob": 0.59096,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 6,
+          "target": "کو",
+          "predicted_prob": 0.59082,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        }
+      ],
+      "false_negatives": []
+    },
+    "target_breakdown": {
+      "کو": {
+        "total": 6,
+        "correct": 3,
+        "accuracy": 0.5
+      },
+      "کا": {
+        "total": 3,
+        "correct": 1,
+        "accuracy": 0.3333
+      }
+    }
+  },
+  "test_metrics": {
+    "total_samples": 15,
+    "accuracy": 0.4667,
+    "precision": 0.4667,
+    "recall": 1.0,
+    "f1_score": 0.6364,
+    "specificity": 0.0,
+    "roc_auc": 0.5446,
+    "class_balance": {
+      "positive_count_correct": 7,
+      "negative_count_incorrect": 8,
+      "positive_ratio": 0.4667
+    },
+    "confusion_matrix": {
+      "tp": 7,
+      "tn": 0,
+      "fp": 8,
+      "fn": 0,
+      "matrix_2x2": [
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          7
+        ]
+      ],
+      "labels": [
+        "INCORRECT",
+        "CORRECT"
+      ]
+    },
+    "error_analysis": {
+      "total_errors": 8,
+      "error_rate": 0.5333,
+      "false_positive_count": 8,
+      "false_negative_count": 0,
+      "borderline_uncertain_count": 15,
+      "false_positives": [
+        {
+          "index": 1,
+          "target": "کی",
+          "predicted_prob": 0.59087,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 3,
+          "target": "کی",
+          "predicted_prob": 0.59089,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 6,
+          "target": "کا",
+          "predicted_prob": 0.59086,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 8,
+          "target": "کا",
+          "predicted_prob": 0.59113,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 11,
+          "target": "کا",
+          "predicted_prob": 0.59095,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 12,
+          "target": "کو",
+          "predicted_prob": 0.59031,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 13,
+          "target": "کو",
+          "predicted_prob": 0.59051,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 14,
+          "target": "کو",
+          "predicted_prob": 0.59078,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        }
+      ],
+      "false_negatives": []
+    },
+    "target_breakdown": {
+      "کی": {
+        "total": 6,
+        "correct": 4,
+        "accuracy": 0.6667
+      },
+      "کا": {
+        "total": 6,
+        "correct": 3,
+        "accuracy": 0.5
+      },
+      "کو": {
+        "total": 3,
+        "correct": 0,
+        "accuracy": 0.0
+      }
+    }
+  },
+  "notes": "Non-linear decision boundary via small MLP (hidden layer 64 with ReLU) on top of frozen 1024-dimensional XLS-R representations."
+}

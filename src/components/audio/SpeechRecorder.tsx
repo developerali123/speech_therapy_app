@@ -14,7 +14,10 @@ import {
 } from 'lucide-react';
 import { useRecorder } from '../../hooks/useRecorder';
 import { RecordingTimer } from './RecordingTimer';
-import { analyzePronunciation } from '../../services/pronunciationAnalyzer';
+import {
+  assessPronunciationViaML,
+  mapMLToPronunciationResult
+} from '../../services/pronunciationAssessmentService';
 import { PronunciationResult } from '../../types';
 import { formatDurationSeconds } from '../../utils/audio';
 
@@ -88,25 +91,29 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
         }
       }
 
-      analyzePronunciation(audioBlob, exerciseId)
-        .then(async (res) => {
+      assessPronunciationViaML(audioBlob, exerciseId)
+        .then(async (mlRes) => {
           if (!isMounted) return;
-          setAnalysisResult(res);
+          const mapped = mapMLToPronunciationResult(mlRes);
+          setAnalysisResult(mapped);
           setIsAnalyzing(false);
           setHasSavedCurrentTake(true);
           try {
-            await onSaveAttempt(audioBlob, duration, mimeType, res);
+            await onSaveAttempt(audioBlob, duration, mimeType, mapped);
           } catch (err) {
             console.error('Failed to auto-save practice attempt:', err);
           }
         })
         .catch(async (err) => {
-          console.error('Audio analysis error:', err);
+          console.error('Audio assessment error:', err);
           if (!isMounted) return;
           const fallbackRes: PronunciationResult = {
             result: 'UNCERTAIN',
             similarity: 0,
-            reason: 'Uncertain — please repeat or ask your speech therapist to review.'
+            confidence: 0,
+            pronunciationScore: 0,
+            assessmentMethod: 'ML',
+            reason: 'Pronunciation model unavailable. Your recording was saved.'
           };
           setAnalysisResult(fallbackRes);
           setIsAnalyzing(false);
@@ -266,7 +273,7 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
               <div className="w-10 h-10 border-3 border-teal-600 border-t-transparent rounded-full animate-spin" />
               <div className="space-y-1">
                 <p className="text-base font-bold text-slate-900 tracking-wide animate-pulse">
-                  Analyzing...
+                  Analyzing pronunciation...
                 </p>
                 <p className="text-xs text-slate-500 font-medium">
                   Evaluating sound characteristics against confirmed reference recordings
@@ -280,7 +287,7 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
                 className={`p-5 sm:p-6 rounded-3xl border text-center flex flex-col items-center gap-3.5 transition-all shadow-xs ${
                   analysisResult.result === 'CORRECT'
                     ? 'bg-emerald-50/90 border-emerald-200 text-emerald-950'
-                    : analysisResult.result === 'INCORRECT'
+                    : analysisResult.result === 'INCORRECT' || analysisResult.result === 'NEEDS_PRACTICE'
                     ? 'bg-rose-50/90 border-rose-200 text-rose-950'
                     : 'bg-amber-50/90 border-amber-200 text-amber-950'
                 }`}
@@ -296,14 +303,14 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
                   {analysisResult.result === 'CORRECT' && (
                     <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-sm sm:text-base shadow-2xs">
                       <Check className="w-5 h-5 stroke-[3]" />
-                      <span>✓ CORRECT</span>
+                      <span>✓ GOOD MATCH</span>
                     </div>
                   )}
 
-                  {analysisResult.result === 'INCORRECT' && (
+                  {(analysisResult.result === 'NEEDS_PRACTICE' || analysisResult.result === 'INCORRECT') && (
                     <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-rose-100 text-rose-800 font-extrabold text-sm sm:text-base shadow-2xs">
                       <X className="w-5 h-5 stroke-[3]" />
-                      <span>✗ INCORRECT</span>
+                      <span>✗ NEEDS PRACTICE</span>
                     </div>
                   )}
 
@@ -315,7 +322,7 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
                   )}
 
                   <span className="text-xs font-mono font-semibold text-slate-600 bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200/70">
-                    Audio-based result: {Math.round(analysisResult.similarity * 100)}% match
+                    Confidence: {Math.round((analysisResult.confidence ?? analysisResult.similarity) * 100)}%
                   </span>
                 </div>
 

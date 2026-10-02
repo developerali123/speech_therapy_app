@@ -1,0 +1,109 @@
+{
+  "total_samples": 15,
+  "accuracy": 0.4667,
+  "precision": 0.4667,
+  "recall": 1.0,
+  "f1_score": 0.6364,
+  "specificity": 0.0,
+  "roc_auc": 0.6161,
+  "class_balance": {
+    "positive_count_correct": 7,
+    "negative_count_incorrect": 8,
+    "positive_ratio": 0.4667
+  },
+  "confusion_matrix": {
+    "tp": 7,
+    "tn": 0,
+    "fp": 8,
+    "fn": 0,
+    "matrix_2x2": [
+      [
+        0,
+        8
+      ],
+      [
+        0,
+        7
+      ]
+    ],
+    "labels": [
+      "INCORRECT",
+      "CORRECT"
+    ]
+  },
+  "error_analysis": {
+    "total_errors": 8,
+    "error_rate": 0.5333,
+    "false_positive_count": 8,
+    "false_negative_count": 0,
+    "borderline_uncertain_count": 15,
+    "false_positives": [
+      {
+        "index": 1,
+        "target": "\u06a9\u06cc",
+        "predicted_prob": 0.56707,
+        "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+      },
+      {
+        "index": 3,
+        "target": "\u06a9\u06cc",
+        "predicted_prob": 0.56723,
+        "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+      },
+      {
+        "index": 6,
+        "target": "\u06a9\u0627",
+        "predicted_prob": 0.5661,
+        "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+      },
+      {
+        "index": 8,
+        "target": "\u06a9\u0627",
+        "predicted_prob": 0.56695,
+        "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+      },
+      {
+        "index": 11,
+        "target": "\u06a9\u0627",
+        "predicted_prob": 0.56659,
+        "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+      },
+      {
+        "index": 12,
+        "target": "\u06a9\u0648",
+        "predicted_prob": 0.5652,
+        "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+      },
+      {
+        "index": 13,
+        "target": "\u06a9\u0648",
+        "predicted_prob": 0.56601,
+        "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+      },
+      {
+        "index": 14,
+        "target": "\u06a9\u0648",
+        "predicted_prob": 0.56673,
+        "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+      }
+    ],
+    "false_negatives": []
+  },
+  "target_breakdown": {
+    "\u06a9\u06cc": {
+      "total": 6,
+      "correct": 4,
+      "accuracy": 0.6667
+    },
+    "\u06a9\u0627": {
+      "total": 6,
+      "correct": 3,
+      "accuracy": 0.5
+    },
+    "\u06a9\u0648": {
+      "total": 3,
+      "correct": 0,
+      "accuracy": 0.0
+    }
+  }
+}

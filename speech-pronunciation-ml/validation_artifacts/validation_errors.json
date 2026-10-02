@@ -1,0 +1,79 @@
+[
+  {
+    "recording_id": "rec_syn_0001",
+    "target": "کا",
+    "therapist_label": "INCORRECT",
+    "model_label": "CORRECT",
+    "confidence": 0.4768,
+    "duration": 0.61,
+    "model_score": 0.4768,
+    "error_type": "False Positive (Model predicted Correct, Therapist said Incorrect)",
+    "therapist_remarks": "Therapist confirmed INCORRECT for کا"
+  },
+  {
+    "recording_id": "rec_syn_0003",
+    "target": "کا",
+    "therapist_label": "INCORRECT",
+    "model_label": "CORRECT",
+    "confidence": 0.4777,
+    "duration": 1.05,
+    "model_score": 0.4777,
+    "error_type": "False Positive (Model predicted Correct, Therapist said Incorrect)",
+    "therapist_remarks": "Therapist confirmed INCORRECT for کا"
+  },
+  {
+    "recording_id": "rec_syn_0018",
+    "target": "کا",
+    "therapist_label": "INCORRECT",
+    "model_label": "CORRECT",
+    "confidence": 0.4771,
+    "duration": 1.03,
+    "model_score": 0.4771,
+    "error_type": "False Positive (Model predicted Correct, Therapist said Incorrect)",
+    "therapist_remarks": "Therapist confirmed INCORRECT for کا"
+  },
+  {
+    "recording_id": "rec_syn_0036",
+    "target": "کی",
+    "therapist_label": "INCORRECT",
+    "model_label": "CORRECT",
+    "confidence": 0.4759,
+    "duration": 0.81,
+    "model_score": 0.4759,
+    "error_type": "False Positive (Model predicted Correct, Therapist said Incorrect)",
+    "therapist_remarks": "Therapist confirmed INCORRECT for کی"
+  },
+  {
+    "recording_id": "rec_syn_0025",
+    "target": "کی",
+    "therapist_label": "INCORRECT",
+    "model_label": "CORRECT",
+    "confidence": 0.4758,
+    "duration": 0.94,
+    "model_score": 0.4758,
+    "error_type": "False Positive (Model predicted Correct, Therapist said Incorrect)",
+    "therapist_remarks": "Therapist confirmed INCORRECT for کی"
+  },
+  {
+    "recording_id": "rec_syn_0066",
+    "target": "کو",
+    "therapist_label": "INCORRECT",
+    "model_label": "CORRECT",
+    "confidence": 0.475,
+    "duration": 0.72,
+    "model_score": 0.475,
+    "error_type": "False Positive (Model predicted Correct, Therapist said Incorrect)",
+    "therapist_remarks": "Therapist confirmed INCORRECT for کو"
+  },
+  {
+    "recording_id": "rec_syn_0075",
+    "target": "کو",
+    "therapist_label": "INCORRECT",
+    "model_label": "CORRECT",
+    "confidence": 0.4765,
+    "duration": 1.03,
+    "model_score": 0.4765,
+    "error_type": "False Positive (Model predicted Correct, Therapist said Incorrect)",
+    "therapist_remarks": "Therapist confirmed INCORRECT for کو"
+  }
+]

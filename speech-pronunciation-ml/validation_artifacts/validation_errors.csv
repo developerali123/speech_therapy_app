@@ -1,0 +1,8 @@
+recording_id,target,therapist_label,model_label,confidence,duration,model_score,error_type,therapist_remarks
+rec_syn_0001,کا,INCORRECT,CORRECT,0.4768,0.61,0.4768,"False Positive (Model predicted Correct, Therapist said Incorrect)",Therapist confirmed INCORRECT for کا
+rec_syn_0003,کا,INCORRECT,CORRECT,0.4777,1.05,0.4777,"False Positive (Model predicted Correct, Therapist said Incorrect)",Therapist confirmed INCORRECT for کا
+rec_syn_0018,کا,INCORRECT,CORRECT,0.4771,1.03,0.4771,"False Positive (Model predicted Correct, Therapist said Incorrect)",Therapist confirmed INCORRECT for کا
+rec_syn_0036,کی,INCORRECT,CORRECT,0.4759,0.81,0.4759,"False Positive (Model predicted Correct, Therapist said Incorrect)",Therapist confirmed INCORRECT for کی
+rec_syn_0025,کی,INCORRECT,CORRECT,0.4758,0.94,0.4758,"False Positive (Model predicted Correct, Therapist said Incorrect)",Therapist confirmed INCORRECT for کی
+rec_syn_0066,کو,INCORRECT,CORRECT,0.475,0.72,0.475,"False Positive (Model predicted Correct, Therapist said Incorrect)",Therapist confirmed INCORRECT for کو
+rec_syn_0075,کو,INCORRECT,CORRECT,0.4765,1.03,0.4765,"False Positive (Model predicted Correct, Therapist said Incorrect)",Therapist confirmed INCORRECT for کو

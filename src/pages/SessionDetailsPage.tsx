@@ -193,6 +193,8 @@ export const SessionDetailsPage: React.FC = () => {
                 key={recording.id}
                 recording={recording}
                 index={idx}
+                exerciseName={exercise?.name}
+                targetText={exercise?.targetText}
                 onReview={handleTherapistReview}
                 onDelete={handleDeleteRecording}
                 allowReview={true}

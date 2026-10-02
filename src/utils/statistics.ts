@@ -1,4 +1,4 @@
-import { PracticeSession, Recording, DailyPracticeStats } from '../types';
+import { PracticeSession, Recording, DailyPracticeStats, Exercise } from '../types';
 import { toDateKey, getLastNDaysKeys, formatDateLabel } from './dates';
 
 export interface DailyChartPoint {
@@ -18,6 +18,24 @@ export interface RecentSessionPerformance {
   audioRate: number;
   therapistRate: number | null;
   reviewedCount: number;
+}
+
+export interface ExercisePracticeStats {
+  exerciseId: string;
+  name: string;
+  targetText: string;
+  difficulty: 'single' | 'sequence';
+  targetUnits: string[];
+  attempts: number;
+  audioCorrect: number;
+  audioIncorrect: number;
+  audioUncertain: number;
+  audioRate: number; // %
+  therapistReviewed: number;
+  therapistCorrect: number;
+  therapistIncorrect: number;
+  therapistUncertain: number;
+  therapistRate: number | null; // %
 }
 
 export interface AppStatistics {
@@ -66,6 +84,10 @@ export interface AppStatistics {
 
   // 8. Recharts Time Series (for the 4 charts)
   dailyChartData: DailyChartPoint[];
+
+  // 9. Multi-Exercise Progress Breakdown
+  byExercise: ExercisePracticeStats[];
+  exerciseStatsMap: Record<string, ExercisePracticeStats>;
 
   // Backward compatibility fields
   reviewedAttempts: number;
@@ -161,11 +183,120 @@ export function calculateStreaks(
 }
 
 /**
+ * Calculate progress statistics for a specific exercise target.
+ */
+export function getStatisticsForExercise(
+  recordings: Recording[],
+  exerciseId: string,
+  exerciseName?: string,
+  targetText?: string,
+  targetUnits?: string[],
+  difficulty?: 'single' | 'sequence'
+): ExercisePracticeStats {
+  const matches = recordings.filter((r) => {
+    if (r.exerciseId === exerciseId) return true;
+    // Map missing exerciseId to canonical Ka
+    if (!r.exerciseId && (exerciseId === 'ex-qaf-ka-01' || exerciseId === 'ka')) return true;
+    return false;
+  });
+
+  const attempts = matches.length;
+  let audioCorrect = 0;
+  let audioIncorrect = 0;
+  let audioUncertain = 0;
+  let therapistReviewed = 0;
+  let therapistCorrect = 0;
+  let therapistIncorrect = 0;
+  let therapistUncertain = 0;
+
+  for (const r of matches) {
+    if (r.autoResult === 'CORRECT') audioCorrect++;
+    else if (r.autoResult === 'INCORRECT' || r.autoResult === 'NEEDS_PRACTICE') audioIncorrect++;
+    else if (r.autoResult === 'UNCERTAIN') audioUncertain++;
+
+    if (r.therapistResult) {
+      therapistReviewed++;
+      if (r.therapistResult === 'CORRECT') therapistCorrect++;
+      else if (r.therapistResult === 'INCORRECT') therapistIncorrect++;
+      else if (r.therapistResult === 'UNCERTAIN') therapistUncertain++;
+    }
+  }
+
+  const audioRate = attempts > 0 ? Math.round((audioCorrect / attempts) * 100) : 0;
+  const therapistRate = therapistReviewed > 0 ? Math.round((therapistCorrect / therapistReviewed) * 100) : null;
+
+  const derivedUnits = targetUnits && targetUnits.length > 0
+    ? targetUnits
+    : (targetText ? [targetText] : [exerciseId]);
+
+  return {
+    exerciseId,
+    name: exerciseName || exerciseId,
+    targetText: targetText || derivedUnits.join('، '),
+    difficulty: difficulty || (derivedUnits.length > 1 ? 'sequence' : 'single'),
+    targetUnits: derivedUnits,
+    attempts,
+    audioCorrect,
+    audioIncorrect,
+    audioUncertain,
+    audioRate,
+    therapistReviewed,
+    therapistCorrect,
+    therapistIncorrect,
+    therapistUncertain,
+    therapistRate
+  };
+}
+
+/**
+ * Group practice statistics by exercise
+ */
+export function groupProgressByExercise(
+  recordings: Recording[],
+  exercises: Exercise[] = []
+): ExercisePracticeStats[] {
+  const exerciseMap = new Map<string, Exercise>();
+  for (const ex of exercises) {
+    exerciseMap.set(ex.id, ex);
+  }
+
+  const allIds = new Set<string>();
+  for (const ex of exercises) {
+    allIds.add(ex.id);
+  }
+  for (const r of recordings) {
+    if (r.exerciseId) allIds.add(r.exerciseId);
+  }
+  // Default canonical targets if empty
+  if (allIds.size === 0) {
+    allIds.add('ka');
+  }
+
+  const result: ExercisePracticeStats[] = [];
+  for (const id of allIds) {
+    const ex = exerciseMap.get(id);
+    result.push(
+      getStatisticsForExercise(
+        recordings,
+        id,
+        ex?.name,
+        ex?.targetText,
+        ex?.targetUnits,
+        ex?.difficulty
+      )
+    );
+  }
+
+  return result;
+}
+
+/**
  * Calculate comprehensive statistics from recordings and sessions
  */
 export function calculateStatistics(
   recordings: Recording[],
-  sessions: PracticeSession[]
+  sessions: PracticeSession[],
+  exercises: Exercise[] = []
 ): AppStatistics {
   const totalAttempts = recordings.length;
   let audioCorrectCount = 0;
@@ -213,7 +344,7 @@ export function calculateStatistics(
     if (rec.autoResult === 'CORRECT') {
       audioCorrectCount++;
       dateMap[key].audioCorrect++;
-    } else if (rec.autoResult === 'INCORRECT') {
+    } else if (rec.autoResult === 'INCORRECT' || rec.autoResult === 'NEEDS_PRACTICE') {
       audioIncorrectCount++;
     } else if (rec.autoResult === 'UNCERTAIN') {
       audioUncertainCount++;
@@ -223,7 +354,7 @@ export function calculateStatistics(
     if (key === todayKey) {
       todayAttempts++;
       if (rec.autoResult === 'CORRECT') todayAudioCorrect++;
-      else if (rec.autoResult === 'INCORRECT') todayAudioIncorrect++;
+      else if (rec.autoResult === 'INCORRECT' || rec.autoResult === 'NEEDS_PRACTICE') todayAudioIncorrect++;
       else if (rec.autoResult === 'UNCERTAIN') todayAudioUncertain++;
     }
 
@@ -276,7 +407,9 @@ export function calculateStatistics(
   );
   const exerciseTotalAttempts = qafRecs.length;
   const exerciseAudioCorrect = qafRecs.filter((r) => r.autoResult === 'CORRECT').length;
-  const exerciseAudioIncorrect = qafRecs.filter((r) => r.autoResult === 'INCORRECT').length;
+  const exerciseAudioIncorrect = qafRecs.filter(
+    (r) => r.autoResult === 'INCORRECT' || r.autoResult === 'NEEDS_PRACTICE'
+  ).length;
   const exerciseAudioUncertain = qafRecs.filter((r) => r.autoResult === 'UNCERTAIN').length;
   const exerciseTherapistCorrect = qafRecs.filter((r) => r.therapistResult === 'CORRECT').length;
   const exerciseTherapistIncorrect = qafRecs.filter((r) => r.therapistResult === 'INCORRECT').length;
@@ -378,6 +511,13 @@ export function calculateStatistics(
     };
   });
 
+  // Multi-exercise aggregation
+  const byExercise = groupProgressByExercise(recordings, exercises);
+  const exerciseStatsMap: Record<string, ExercisePracticeStats> = {};
+  for (const item of byExercise) {
+    exerciseStatsMap[item.exerciseId] = item;
+  }
+
   return {
     totalAttempts,
     audioCorrectCount,
@@ -409,6 +549,8 @@ export function calculateStatistics(
     exerciseTherapistIncorrect,
     recentSessions,
     dailyChartData,
+    byExercise,
+    exerciseStatsMap,
     reviewedAttempts: therapistReviewedCount,
     correctCount: totalTherapistCorrect,
     incorrectCount: totalTherapistIncorrect,

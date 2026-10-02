@@ -1,0 +1,227 @@
+{
+  "experiment_id": "exp-001-baseline",
+  "timestamp": "2026-10-02T18:58:32.589835Z",
+  "model_architecture": {
+    "feature_extractor": "AcousticBaseline (Spectral Centroid, Flux, Formants, Energy)",
+    "classifier": "LogisticRegression",
+    "pooling": "mean_temporal_pooling"
+  },
+  "hyperparameters": {
+    "lr": 0.08,
+    "l2_reg": 0.001,
+    "epochs": 60
+  },
+  "dataset": {
+    "version": 1,
+    "total_examples": 72,
+    "targets": [
+      "کا",
+      "کی",
+      "کے",
+      "کو"
+    ],
+    "class_distribution": {
+      "CORRECT": 39,
+      "INCORRECT": 33
+    },
+    "train_count": 48,
+    "val_count": 9,
+    "test_count": 15
+  },
+  "validation_metrics": {
+    "total_samples": 9,
+    "accuracy": 0.4444,
+    "precision": 0.4444,
+    "recall": 1.0,
+    "f1_score": 0.6154,
+    "specificity": 0.0,
+    "roc_auc": 0.6,
+    "class_balance": {
+      "positive_count_correct": 4,
+      "negative_count_incorrect": 5,
+      "positive_ratio": 0.4444
+    },
+    "confusion_matrix": {
+      "tp": 4,
+      "tn": 0,
+      "fp": 5,
+      "fn": 0,
+      "matrix_2x2": [
+        [
+          0,
+          5
+        ],
+        [
+          0,
+          4
+        ]
+      ],
+      "labels": [
+        "INCORRECT",
+        "CORRECT"
+      ]
+    },
+    "error_analysis": {
+      "total_errors": 5,
+      "error_rate": 0.5556,
+      "false_positive_count": 5,
+      "false_negative_count": 0,
+      "borderline_uncertain_count": 9,
+      "false_positives": [
+        {
+          "index": 0,
+          "target": "کو",
+          "predicted_prob": 0.57622,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 1,
+          "target": "کو",
+          "predicted_prob": 0.57628,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 3,
+          "target": "کا",
+          "predicted_prob": 0.57629,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 5,
+          "target": "کا",
+          "predicted_prob": 0.57633,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 6,
+          "target": "کو",
+          "predicted_prob": 0.5763,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        }
+      ],
+      "false_negatives": []
+    },
+    "target_breakdown": {
+      "کو": {
+        "total": 6,
+        "correct": 3,
+        "accuracy": 0.5
+      },
+      "کا": {
+        "total": 3,
+        "correct": 1,
+        "accuracy": 0.3333
+      }
+    }
+  },
+  "test_metrics": {
+    "total_samples": 15,
+    "accuracy": 0.4667,
+    "precision": 0.4667,
+    "recall": 1.0,
+    "f1_score": 0.6364,
+    "specificity": 0.0,
+    "roc_auc": 0.4732,
+    "class_balance": {
+      "positive_count_correct": 7,
+      "negative_count_incorrect": 8,
+      "positive_ratio": 0.4667
+    },
+    "confusion_matrix": {
+      "tp": 7,
+      "tn": 0,
+      "fp": 8,
+      "fn": 0,
+      "matrix_2x2": [
+        [
+          0,
+          8
+        ],
+        [
+          0,
+          7
+        ]
+      ],
+      "labels": [
+        "INCORRECT",
+        "CORRECT"
+      ]
+    },
+    "error_analysis": {
+      "total_errors": 8,
+      "error_rate": 0.5333,
+      "false_positive_count": 8,
+      "false_negative_count": 0,
+      "borderline_uncertain_count": 15,
+      "false_positives": [
+        {
+          "index": 1,
+          "target": "کی",
+          "predicted_prob": 0.5763,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 3,
+          "target": "کی",
+          "predicted_prob": 0.57634,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 6,
+          "target": "کا",
+          "predicted_prob": 0.57626,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 8,
+          "target": "کا",
+          "predicted_prob": 0.57634,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 11,
+          "target": "کا",
+          "predicted_prob": 0.57629,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 12,
+          "target": "کو",
+          "predicted_prob": 0.57621,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 13,
+          "target": "کو",
+          "predicted_prob": 0.57623,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        },
+        {
+          "index": 14,
+          "target": "کو",
+          "predicted_prob": 0.57626,
+          "type": "False Positive (Predicted Correct, Therapist marked Incorrect)"
+        }
+      ],
+      "false_negatives": []
+    },
+    "target_breakdown": {
+      "کی": {
+        "total": 6,
+        "correct": 4,
+        "accuracy": 0.6667
+      },
+      "کا": {
+        "total": 6,
+        "correct": 3,
+        "accuracy": 0.5
+      },
+      "کو": {
+        "total": 3,
+        "correct": 0,
+        "accuracy": 0.0
+      }
+    }
+  },
+  "notes": "Classical acoustic feature baseline (28-dimensional spectral features) with L2 regularized logistic regression."
+}

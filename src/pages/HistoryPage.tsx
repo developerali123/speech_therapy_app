@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllSessions } from '../storage/sessionRepository';
 import { getAllRecordings, updateRecording, deleteRecording } from '../storage/recordingRepository';
-import { PracticeSession, Recording, TherapistResult } from '../types';
+import { getExercises } from '../storage/exerciseRepository';
+import { PracticeSession, Recording, Exercise, TherapistResult } from '../types';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { PracticeAttempt } from '../components/practice/PracticeAttempt';
@@ -25,6 +26,7 @@ export const HistoryPage: React.FC = () => {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<PracticeSession[]>([]);
   const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [exercisesMap, setExercisesMap] = useState<Record<string, Exercise>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [expandedSessionIds, setExpandedSessionIds] = useState<Record<string, boolean>>({});
 
@@ -32,12 +34,19 @@ export const HistoryPage: React.FC = () => {
     async function loadHistory() {
       try {
         setLoading(true);
-        const [loadedSessions, loadedRecordings] = await Promise.all([
+        const [loadedSessions, loadedRecordings, loadedExercises] = await Promise.all([
           getAllSessions(),
-          getAllRecordings()
+          getAllRecordings(),
+          getExercises()
         ]);
         setSessions(loadedSessions);
         setRecordings(loadedRecordings);
+
+        const exMap: Record<string, Exercise> = {};
+        for (const ex of loadedExercises) {
+          exMap[ex.id] = ex;
+        }
+        setExercisesMap(exMap);
 
         // Auto-expand the most recent session if available
         if (loadedSessions.length > 0) {
@@ -156,6 +165,9 @@ export const HistoryPage: React.FC = () => {
                     const uncertainCount = sessionRecs.filter((r) => r.therapistResult === 'UNCERTAIN').length;
                     const isExpanded = !!expandedSessionIds[session.id];
                     const durationStr = formatSessionDuration(session.startedAt, session.completedAt);
+                    const sessionExercise = exercisesMap[session.exerciseId];
+                    const exerciseName = sessionExercise?.name || (session.exerciseId === 'ex-qaf-ka-01' ? 'Qaf — Ka Practice' : session.exerciseId);
+                    const targetDisplay = sessionExercise?.targetText || session.targetUnits?.join('، ') || 'کا';
 
                     return (
                       <Card
@@ -172,12 +184,12 @@ export const HistoryPage: React.FC = () => {
                                   Date: <strong className="text-slate-800">{formatDateLabel(session.startedAt)} at {formatTime(session.startedAt)}</strong>
                                 </span>
                                 <span className="text-slate-300">•</span>
-                                <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200/50">
-                                  Exercise: Qaf — Ka Practice (کا)
+                                <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200/50 font-arabic">
+                                  Exercise: {targetDisplay}
                                 </span>
                               </div>
                               <h3 className="font-bold text-slate-900 text-lg mt-1">
-                                Qaf — Ka Practice
+                                {exerciseName}
                               </h3>
                             </div>
 
@@ -281,6 +293,8 @@ export const HistoryPage: React.FC = () => {
                                     key={rec.id}
                                     recording={rec}
                                     index={index}
+                                    exerciseName={exerciseName}
+                                    targetText={targetDisplay}
                                     onReview={handleTherapistReview}
                                     onDelete={handleDeleteRecording}
                                     allowReview={true}

@@ -1,0 +1,15 @@
+# Core Audio & Numerical Computing
+# Note: The project includes zero-dependency pure-Python fallbacks for all modules,
+# enabling execution and experimentation in any standard Python 3.10+ environment.
+# When installed, these packages provide hardware-accelerated tensor and DSP operations.
+
+# Pretrained Speech Representations
+# torch>=2.0.0
+# torchaudio>=2.0.0
+# transformers>=4.30.0
+
+# Scientific & ML Baseline Classifiers
+# numpy>=1.24.0
+# scipy>=1.10.0
+# scikit-learn>=1.2.0
+# soundfile>=0.12.0

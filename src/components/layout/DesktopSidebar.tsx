@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Mic, History, BarChart2, Settings, ShieldCheck, Activity, Sliders } from 'lucide-react';
+import { Home, Mic, History, BarChart2, Settings, ShieldCheck, Activity, Sliders, Database } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface SidebarItem {
@@ -13,6 +13,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { name: 'Home', to: '/home', icon: Home },
   { name: 'Practice', to: '/practice', icon: Mic },
   { name: 'Calibration', to: '/calibration', icon: Sliders },
+  { name: 'Training Data', to: '/training-data', icon: Database },
   { name: 'History', to: '/history', icon: History },
   { name: 'Progress', to: '/progress', icon: BarChart2 },
   { name: 'Settings', to: '/settings', icon: Settings },

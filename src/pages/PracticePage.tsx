@@ -11,7 +11,10 @@ export const PracticePage: React.FC = () => {
   const { settings } = useSettings();
 
   const currentExercise = exerciseId
-    ? exercises.find((e) => e.id === exerciseId) || activeExercise
+    ? exercises.find((e) => e.id === exerciseId) ||
+      (exerciseId === 'ex-qaf-ka-01' ? exercises.find((e) => e.id === 'ka') : undefined) ||
+      (exerciseId === 'ka' ? exercises.find((e) => e.id === 'ex-qaf-ka-01') : undefined) ||
+      activeExercise
     : activeExercise;
 
   if (loading) {

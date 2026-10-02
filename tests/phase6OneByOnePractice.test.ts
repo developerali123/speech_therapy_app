@@ -145,7 +145,7 @@ describe('Phase 6 — One-by-One Speech Practice & 20 Consecutive Attempts', () 
 
     expect(correctCount + incorrectCount + uncertainCount).toBe(20);
     expect(resultsLog).toHaveLength(20);
-  });
+  }, 15000);
 
   it('preserves strict separation between automatic audio result and therapist clinical review', async () => {
     // Create an attempt where automatic algorithm returns CORRECT

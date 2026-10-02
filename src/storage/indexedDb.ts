@@ -1,12 +1,13 @@
 const DB_NAME = 'speech-practice-assistant';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const STORES = {
   EXERCISES: 'exercises',
   SESSIONS: 'sessions',
   RECORDINGS: 'recordings',
   SETTINGS: 'settings',
-  CALIBRATION: 'calibration'
+  CALIBRATION: 'calibration',
+  TRAINING_EXAMPLES: 'training_examples'
 } as const;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -57,6 +58,15 @@ export function openAppDatabase(): Promise<IDBDatabase> {
         const calStore = db.createObjectStore(STORES.CALIBRATION, { keyPath: 'id' });
         calStore.createIndex('exerciseId', 'exerciseId', { unique: false });
         calStore.createIndex('label', 'label', { unique: false });
+      }
+
+      // Training Examples Store (Phase 9)
+      if (!db.objectStoreNames.contains(STORES.TRAINING_EXAMPLES)) {
+        const teStore = db.createObjectStore(STORES.TRAINING_EXAMPLES, { keyPath: 'id' });
+        teStore.createIndex('recordingId', 'recordingId', { unique: true });
+        teStore.createIndex('exerciseId', 'exerciseId', { unique: false });
+        teStore.createIndex('therapistLabel', 'therapistLabel', { unique: false });
+        teStore.createIndex('includedInTraining', 'includedInTraining', { unique: false });
       }
     };
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Layers } from 'lucide-react';
 import { Exercise } from '../../types';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -12,6 +12,8 @@ interface ExerciseCardProps {
 
 export const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, className = '' }) => {
   const navigate = useNavigate();
+  const isSequence = (exercise.targetUnits && exercise.targetUnits.length > 1) || exercise.difficulty === 'sequence';
+  const units = exercise.targetUnits && exercise.targetUnits.length > 0 ? exercise.targetUnits : [exercise.targetText];
 
   return (
     <Card
@@ -24,9 +26,17 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, className 
 
       <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="flex-1 space-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-teal-700 bg-teal-100/70 px-2.5 py-0.5 rounded-full">
-              <Sparkles className="w-3 h-3" /> Target Exercise
+              {isSequence ? (
+                <>
+                  <Layers className="w-3 h-3" /> Sequence ({units.length} Steps)
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3 h-3" /> Target Exercise
+                </>
+              )}
             </span>
             {exercise.phonemeTarget && (
               <span className="text-xs font-semibold text-slate-400">
@@ -58,13 +68,29 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({ exercise, className 
 
         {/* Large Target Badge for Mobile and Desktop */}
         <div className="w-full sm:w-auto flex sm:flex-col items-center justify-center p-4 bg-white/90 border border-teal-200/80 rounded-2xl shadow-xs shrink-0 self-center">
-          <span className="text-xs text-slate-400 font-medium mb-1">Target</span>
+          <span className="text-xs text-slate-400 font-medium mb-1">
+            {isSequence ? 'Sequence' : 'Target'}
+          </span>
           <div
-            className="text-5xl sm:text-6xl font-bold text-teal-900 font-arabic px-4 py-1 leading-none select-none"
-            dir="rtl"
+            className={`font-bold text-teal-900 font-arabic px-3 py-1 leading-none select-none text-center ${
+              isSequence ? 'text-2xl sm:text-3xl' : 'text-5xl sm:text-6xl'
+            }`}
             aria-label={`Target sound: ${exercise.targetText}`}
           >
-            {exercise.targetText}
+            {isSequence ? (
+              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                {units.map((u, i) => (
+                  <React.Fragment key={i}>
+                    <span>{u}</span>
+                    {i < units.length - 1 && (
+                      <span className="text-teal-500 font-sans text-lg font-bold">→</span>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            ) : (
+              exercise.targetText
+            )}
           </div>
         </div>
       </div>

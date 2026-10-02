@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getAllSessions } from '../storage/sessionRepository';
 import { getAllRecordings } from '../storage/recordingRepository';
+import { getExercises } from '../storage/exerciseRepository';
 import { useSettings } from '../hooks/useSettings';
-import { PracticeSession, Recording } from '../types';
+import { PracticeSession, Recording, Exercise } from '../types';
 import { calculateStatistics } from '../utils/statistics';
 import { Phase7Charts } from '../components/progress/Phase7Charts';
 import { ProgressBar } from '../components/ui/ProgressBar';
@@ -18,7 +19,8 @@ import {
   Download,
   ShieldAlert,
   Info,
-  ChevronRight
+  ChevronRight,
+  Filter
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,6 +29,8 @@ export const ProgressPage: React.FC = () => {
   const { settings, updateSettings } = useSettings();
   const [sessions, setSessions] = useState<PracticeSession[]>([]);
   const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [selectedExerciseFilter, setSelectedExerciseFilter] = useState<string>('all');
   const [loading, setLoading] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
@@ -34,12 +38,14 @@ export const ProgressPage: React.FC = () => {
     async function loadData() {
       try {
         setLoading(true);
-        const [loadedSessions, loadedRecordings] = await Promise.all([
+        const [loadedSessions, loadedRecordings, loadedExercises] = await Promise.all([
           getAllSessions(),
-          getAllRecordings()
+          getAllRecordings(),
+          getExercises()
         ]);
         setSessions(loadedSessions);
         setRecordings(loadedRecordings);
+        setExercises(loadedExercises);
       } finally {
         setLoading(false);
       }
@@ -47,7 +53,7 @@ export const ProgressPage: React.FC = () => {
     loadData();
   }, []);
 
-  const stats = calculateStatistics(recordings, sessions);
+  const stats = calculateStatistics(recordings, sessions, exercises);
   const dailyGoal = settings.dailyGoal || 10;
   const isGoalCompleted = stats.todayAttempts >= dailyGoal;
   const goalOptions = [5, 10, 15, 20, 25];
@@ -424,79 +430,195 @@ export const ProgressPage: React.FC = () => {
             </div>
           </div>
 
-          {/* 7. EXERCISE STATISTICS ("Qaf — Ka Practice") */}
-          <section aria-labelledby="exercise-stats-heading" className="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          {/* 7. EXERCISE STATISTICS & FILTERING BY TARGET */}
+          <section aria-labelledby="exercise-stats-heading" className="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
                 <span className="text-[11px] font-bold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   Target Specific Statistics
                 </span>
                 <h3 id="exercise-stats-heading" className="text-lg font-bold text-slate-900 mt-1 flex items-center gap-2">
-                  <span>Qaf — Ka Practice</span>
-                  <span className="font-arabic text-xl font-bold text-teal-800">کا</span>
+                  <span>
+                    {selectedExerciseFilter === 'all'
+                      ? 'Qaf — Ka Practice'
+                      : stats.exerciseStatsMap[selectedExerciseFilter]?.name || 'Exercise Practice'}
+                  </span>
+                  <span className="font-arabic text-xl font-bold text-teal-800">
+                    {selectedExerciseFilter === 'all'
+                      ? 'کا'
+                      : stats.exerciseStatsMap[selectedExerciseFilter]?.targetText || 'کا'}
+                  </span>
                 </h3>
               </div>
 
-              <button
-                type="button"
-                onClick={() => navigate('/practice')}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-900 transition self-start sm:self-auto cursor-pointer"
-              >
-                <span>Practice this target</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 text-center text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[10px] text-slate-500 block">Total attempts</span>
-                <span className="text-base font-extrabold text-slate-900 font-mono mt-0.5 block">
-                  {stats.exerciseTotalAttempts}
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[10px] text-slate-500 block">Total reviewed</span>
-                <span className="text-base font-extrabold text-indigo-700 font-mono mt-0.5 block">
-                  {stats.exerciseTotalReviewed}
-                </span>
-              </div>
-
-              <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
-                <span className="text-[10px] text-emerald-700 block font-semibold">Audio Correct</span>
-                <span className="text-base font-extrabold text-emerald-700 font-mono mt-0.5 block">
-                  {stats.exerciseAudioCorrect}
-                </span>
-              </div>
-
-              <div className="p-3 bg-rose-50/50 rounded-xl border border-rose-100">
-                <span className="text-[10px] text-rose-700 block font-semibold">Audio Incorrect</span>
-                <span className="text-base font-extrabold text-rose-700 font-mono mt-0.5 block">
-                  {stats.exerciseAudioIncorrect}
-                </span>
-              </div>
-
-              <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-100">
-                <span className="text-[10px] text-amber-700 block font-semibold">Audio Uncertain</span>
-                <span className="text-base font-extrabold text-amber-700 font-mono mt-0.5 block">
-                  {stats.exerciseAudioUncertain}
-                </span>
-              </div>
-
-              <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
-                <span className="text-[10px] text-indigo-700 block font-semibold">Therapist Correct</span>
-                <span className="text-base font-extrabold text-indigo-800 font-mono mt-0.5 block">
-                  {stats.exerciseTherapistCorrect}
-                </span>
-              </div>
-
-              <div className="p-3 bg-rose-50/50 rounded-xl border border-rose-100">
-                <span className="text-[10px] text-rose-700 block font-semibold">Therapist Incorrect</span>
-                <span className="text-base font-extrabold text-rose-800 font-mono mt-0.5 block">
-                  {stats.exerciseTherapistIncorrect}
-                </span>
+              <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      selectedExerciseFilter === 'all'
+                        ? '/practice'
+                        : `/practice/${selectedExerciseFilter}`
+                    )
+                  }
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100/70 border border-teal-200/80 px-3 py-1.5 rounded-xl transition cursor-pointer"
+                >
+                  <span>Practice this target</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
+
+            {/* Exercise Filter Selector Pills */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-slate-400" />
+                Filter by Exercise Target
+              </span>
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin">
+                <button
+                  type="button"
+                  onClick={() => setSelectedExerciseFilter('all')}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                    selectedExerciseFilter === 'all'
+                      ? 'bg-teal-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  All / Canonical Ka (کا)
+                </button>
+
+                {stats.byExercise.map((ex) => (
+                  <button
+                    key={ex.exerciseId}
+                    type="button"
+                    onClick={() => setSelectedExerciseFilter(ex.exerciseId)}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer ${
+                      selectedExerciseFilter === ex.exerciseId
+                        ? 'bg-teal-600 text-white shadow-2xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <span>{ex.name}</span>
+                    <span className="font-arabic font-bold text-slate-900 bg-white/40 px-1 rounded text-[11px]">
+                      {ex.targetText}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Attempts Grouped By Exercise (Summary Grid) */}
+            <div className="space-y-2 pt-1">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Practice Volume by Target
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+                {stats.byExercise.map((ex) => (
+                  <button
+                    key={ex.exerciseId}
+                    type="button"
+                    onClick={() => setSelectedExerciseFilter(ex.exerciseId)}
+                    className={`p-3 rounded-2xl border text-left transition cursor-pointer ${
+                      selectedExerciseFilter === ex.exerciseId
+                        ? 'border-teal-500 bg-teal-50/60 ring-2 ring-teal-500/20'
+                        : 'border-slate-200/80 bg-slate-50/50 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700 block truncate">
+                        {ex.name}
+                      </span>
+                      <span className="font-arabic text-sm font-bold text-teal-800 shrink-0">
+                        {ex.targetText}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-baseline gap-1">
+                      <span className="text-xl font-extrabold text-slate-900 font-mono">
+                        {ex.attempts}
+                      </span>
+                      <span className="text-[10px] text-slate-500">attempts</span>
+                    </div>
+                    {ex.attempts > 0 && (
+                      <span className="text-[10px] font-semibold text-teal-700 block mt-0.5">
+                        Audio rate: {ex.audioRate}%
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Active Target Detailed Metrics Breakdown */}
+            {(() => {
+              const activeStats =
+                selectedExerciseFilter !== 'all' && stats.exerciseStatsMap[selectedExerciseFilter]
+                  ? stats.exerciseStatsMap[selectedExerciseFilter]
+                  : {
+                      attempts: stats.exerciseTotalAttempts,
+                      therapistReviewed: stats.exerciseTotalReviewed,
+                      audioCorrect: stats.exerciseAudioCorrect,
+                      audioIncorrect: stats.exerciseAudioIncorrect,
+                      audioUncertain: stats.exerciseAudioUncertain,
+                      therapistCorrect: stats.exerciseTherapistCorrect,
+                      therapistIncorrect: stats.exerciseTherapistIncorrect
+                    };
+
+              return (
+                <div className="pt-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 text-center text-xs">
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <span className="text-[10px] text-slate-500 block">Total attempts</span>
+                      <span className="text-base font-extrabold text-slate-900 font-mono mt-0.5 block">
+                        {activeStats.attempts}
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <span className="text-[10px] text-slate-500 block">Total reviewed</span>
+                      <span className="text-base font-extrabold text-indigo-700 font-mono mt-0.5 block">
+                        {activeStats.therapistReviewed}
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                      <span className="text-[10px] text-emerald-700 block font-semibold">Audio Correct</span>
+                      <span className="text-base font-extrabold text-emerald-700 font-mono mt-0.5 block">
+                        {activeStats.audioCorrect}
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-rose-50/50 rounded-xl border border-rose-100">
+                      <span className="text-[10px] text-rose-700 block font-semibold">Audio Incorrect</span>
+                      <span className="text-base font-extrabold text-rose-700 font-mono mt-0.5 block">
+                        {activeStats.audioIncorrect}
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-100">
+                      <span className="text-[10px] text-amber-700 block font-semibold">Audio Uncertain</span>
+                      <span className="text-base font-extrabold text-amber-700 font-mono mt-0.5 block">
+                        {activeStats.audioUncertain}
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                      <span className="text-[10px] text-indigo-700 block font-semibold">Therapist Correct</span>
+                      <span className="text-base font-extrabold text-indigo-800 font-mono mt-0.5 block">
+                        {activeStats.therapistCorrect}
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-rose-50/50 rounded-xl border border-rose-100">
+                      <span className="text-[10px] text-rose-700 block font-semibold">Therapist Incorrect</span>
+                      <span className="text-base font-extrabold text-rose-800 font-mono mt-0.5 block">
+                        {activeStats.therapistIncorrect}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </section>
 
           {/* 8. RECENT PERFORMANCE (Last 7 Sessions) */}

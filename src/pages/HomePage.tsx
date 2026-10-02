@@ -15,7 +15,7 @@ import { ArrowRight, CheckCircle2, Flame, Clock, Sliders } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { activeExercise, loading: loadingExercise } = useExercises();
+  const { activeExercise, exercises, loading: loadingExercise } = useExercises();
   const { settings } = useSettings();
 
   const [sessions, setSessions] = useState<PracticeSession[]>([]);
@@ -142,6 +142,119 @@ export const HomePage: React.FC = () => {
         ) : loadingExercise ? (
           <Card className="p-8 text-center text-xs text-slate-400">Loading target exercise...</Card>
         ) : null}
+      </section>
+
+      {/* Practice Targets & Sequences Grid */}
+      <section aria-labelledby="all-exercises-title" className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+          <div>
+            <h2 id="all-exercises-title" className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              Practice Targets &amp; Sequences
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Select any individual sound or ordered sequence to practice
+            </p>
+          </div>
+          <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200/60">
+            {exercises.length > 1 ? exercises.filter(e => e.id !== 'ex-qaf-ka-01').length : exercises.length} Available
+          </span>
+        </div>
+
+        {/* Individual Sounds */}
+        <div className="space-y-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block px-1">
+            Individual Sounds
+          </span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {exercises
+              .filter(
+                (e) =>
+                  (e.difficulty === 'single' || (e.targetUnits && e.targetUnits.length <= 1)) &&
+                  (exercises.some(x => x.id === 'ka') ? e.id !== 'ex-qaf-ka-01' : true)
+              )
+              .map((ex) => (
+                <div
+                  key={ex.id}
+                  className="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs hover:border-teal-300 transition flex flex-col justify-between gap-3 group"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-slate-900 block leading-tight">
+                        {ex.name}
+                      </span>
+                      {ex.phonemeTarget && (
+                        <span className="text-[10px] text-slate-400 block mt-0.5">
+                          [{ex.phonemeTarget}]
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-arabic text-2xl font-bold text-teal-800 leading-none group-hover:scale-110 transition-transform">
+                      {ex.targetText}
+                    </span>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/practice/${ex.id}`)}
+                    className="w-full text-xs font-semibold hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300"
+                    rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                  >
+                    Practice
+                  </Button>
+                </div>
+              ))}
+          </div>
+        </div>
+
+        {/* Ordered Sequences */}
+        <div className="space-y-2 pt-1">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block px-1">
+            Ordered Sequences
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {exercises
+              .filter(
+                (e) =>
+                  e.difficulty === 'sequence' || (e.targetUnits && e.targetUnits.length > 1)
+              )
+              .map((ex) => (
+                <div
+                  key={ex.id}
+                  className="bg-white p-4 rounded-2xl border border-teal-100 bg-gradient-to-br from-white to-teal-50/30 shadow-2xs hover:border-teal-300 transition flex flex-col justify-between gap-3"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-bold text-slate-900 block">
+                        {ex.name}
+                      </span>
+                      <span className="text-[10px] font-bold text-teal-700 bg-teal-100/70 px-2 py-0.5 rounded-full uppercase">
+                        {ex.targetUnits?.length || 2} Steps
+                      </span>
+                    </div>
+
+                    <div className="py-2 px-3 bg-white rounded-xl border border-slate-100 text-center font-arabic text-lg sm:text-xl font-bold text-teal-900 my-1">
+                      {ex.targetUnits?.join('   →   ') || ex.targetText}
+                    </div>
+
+                    <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">
+                      {ex.description}
+                    </p>
+                  </div>
+
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => navigate(`/practice/${ex.id}`)}
+                    className="w-full text-xs font-semibold"
+                    rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                  >
+                    Practice Sequence
+                  </Button>
+                </div>
+              ))}
+          </div>
+        </div>
       </section>
 
       {/* Today's Summary Cards */}
