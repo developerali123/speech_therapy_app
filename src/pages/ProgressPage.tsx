@@ -4,7 +4,11 @@ import { getAllRecordings } from '../storage/recordingRepository';
 import { getExercises } from '../storage/exerciseRepository';
 import { useSettings } from '../hooks/useSettings';
 import { PracticeSession, Recording, Exercise } from '../types';
-import { calculateStatistics } from '../utils/statistics';
+import {
+  calculateStatistics,
+  calculatePerUnitStatistics,
+  calculateSequenceProgressStats
+} from '../utils/statistics';
 import { Phase7Charts } from '../components/progress/Phase7Charts';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { downloadPracticeBackup } from '../utils/export';
@@ -20,7 +24,9 @@ import {
   ShieldAlert,
   Info,
   ChevronRight,
-  Filter
+  Filter,
+  Layers,
+  ArrowRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -621,7 +627,166 @@ export const ProgressPage: React.FC = () => {
             })()}
           </section>
 
-          {/* 8. RECENT PERFORMANCE (Last 7 Sessions) */}
+          {/* 8. SEQUENCE PRACTICE & PER-UNIT STATISTICS */}
+          {(() => {
+            const perUnitStats = calculatePerUnitStatistics(recordings, ['کا', 'کی', 'کے', 'کو']);
+            const sequenceStats = calculateSequenceProgressStats(recordings, exercises);
+
+            return (
+              <section aria-labelledby="sequence-stats-heading" className="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                  <div>
+                    <span className="text-[11px] font-bold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Sequence & Unit Breakdown
+                    </span>
+                    <h3 id="sequence-stats-heading" className="text-lg font-bold text-slate-900 mt-1 flex items-center gap-2">
+                      <Layers className="w-5 h-5 text-teal-600" />
+                      <span>Sequence Attempts & Per-Unit Analytics</span>
+                    </h3>
+                  </div>
+                  <span className="text-xs text-slate-500 bg-slate-50 border border-slate-200/60 px-3 py-1 rounded-xl">
+                    Independent Target Metrics
+                  </span>
+                </div>
+
+                {/* Per-Unit Statistics Cards */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                      Per-Unit Statistics (Individual Targets)
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      Confirmed therapist accuracy & practice volume
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {perUnitStats.map((item) => (
+                      <div
+                        key={item.unit}
+                        className="p-4 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/70 to-white shadow-2xs space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-arabic text-2xl font-bold text-slate-900">
+                            {item.unit}
+                          </span>
+                          <span className="text-[10px] font-mono font-medium text-slate-400">
+                            {item.totalAttempts} takes
+                          </span>
+                        </div>
+
+                        <div>
+                          <div className="flex items-baseline justify-between text-xs">
+                            <span className="font-medium text-slate-600">Therapist:</span>
+                            <span className="font-mono font-extrabold text-indigo-700">
+                              {item.therapistRate !== null ? `${item.therapistRate}%` : 'Pending'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">
+                            {item.therapistRate !== null
+                              ? `${item.therapistRate}% therapist-confirmed correct`
+                              : `Audio rate: ${item.audioRate}%`}
+                          </span>
+                        </div>
+
+                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              item.therapistRate !== null
+                                ? item.therapistRate >= 80
+                                  ? 'bg-emerald-500'
+                                  : item.therapistRate >= 60
+                                  ? 'bg-amber-500'
+                                  : 'bg-rose-500'
+                                : 'bg-teal-500'
+                            }`}
+                            style={{
+                              width: `${
+                                item.therapistRate !== null ? item.therapistRate : item.audioRate
+                              }%`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sequence Progress Cards */}
+                <div className="space-y-3 pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                      Sequence Accuracy (Multi-Unit Practice)
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      Isolated multi-unit attempts
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                    {sequenceStats.map((seq) => (
+                      <div
+                        key={seq.exerciseId}
+                        className="p-4 rounded-2xl border border-slate-200/90 bg-white hover:border-teal-200 transition shadow-2xs flex flex-col justify-between space-y-3"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-slate-500">
+                              {seq.name}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-400">
+                              {seq.totalAttempts} attempts
+                            </span>
+                          </div>
+                          <div className="font-arabic text-lg font-bold text-teal-900 tracking-wide dir-rtl flex items-center gap-1.5 pt-1">
+                            {seq.targetUnits.map((u, i) => (
+                              <React.Fragment key={i}>
+                                <span>{u}</span>
+                                {i < seq.targetUnits.length - 1 && (
+                                  <span className="text-slate-300 font-sans text-xs">→</span>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 pt-2 border-t border-slate-100/80">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-600">Therapist Rate:</span>
+                            <span className="font-mono font-bold text-indigo-700">
+                              {seq.therapistRate !== null ? `${seq.therapistRate}%` : 'Pending'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-600">Audio Rate:</span>
+                            <span className="font-mono font-bold text-teal-700">
+                              {seq.audioRate}%
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/practice/${seq.exerciseId}`)}
+                            className="w-full mt-2 inline-flex items-center justify-center gap-1 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100/70 border border-teal-200/70 py-1.5 rounded-xl transition cursor-pointer"
+                          >
+                            <span>Practice Sequence</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/70 text-[11px] text-slate-500 leading-relaxed">
+                  Notice: Unrelated exercises are kept strictly isolated. Sequence accuracy is computed exclusively on recordings matching that specific unit combination.
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* 9. RECENT PERFORMANCE (Last 7 Sessions) */}
           <section aria-labelledby="recent-perf-heading" className="bg-white rounded-3xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-4">
             <div className="border-b border-slate-100 pb-3">
               <h3 id="recent-perf-heading" className="text-base font-bold text-slate-900">

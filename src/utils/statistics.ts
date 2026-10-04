@@ -560,3 +560,208 @@ export function calculateStatistics(
     weeklyStats
   };
 }
+
+export interface PerUnitStat {
+  unit: string;
+  totalAttempts: number;
+  audioCorrect: number;
+  audioRate: number;
+  therapistReviewed: number;
+  therapistCorrect: number;
+  therapistRate: number | null; // %
+}
+
+export interface SequenceProgressStat {
+  exerciseId: string;
+  name: string;
+  sequenceDisplay: string;
+  targetUnits: string[];
+  totalAttempts: number;
+  audioCorrect: number;
+  audioRate: number;
+  therapistReviewed: number;
+  therapistCorrect: number;
+  therapistRate: number | null; // %
+}
+
+/**
+ * Calculates per-unit statistics across both single exercises and multi-unit sequence attempts.
+ * Examples:
+ * کا: 92% therapist-confirmed correct
+ * کی: 81%
+ * کے: 67%
+ * کو: 88%
+ */
+export function calculatePerUnitStatistics(
+  recordings: Recording[],
+  units: string[] = ['کا', 'کی', 'کے', 'کو']
+): PerUnitStat[] {
+  return units.map((targetUnit) => {
+    let totalAttempts = 0;
+    let audioCorrect = 0;
+    let therapistReviewed = 0;
+    let therapistCorrect = 0;
+
+    for (const rec of recordings) {
+      // Case A: Multi-unit sequence recording
+      if (rec.unitResults && rec.unitResults.length > 0) {
+        const match = rec.unitResults.find((u) => u.target === targetUnit || u.unit === targetUnit);
+        if (match) {
+          totalAttempts++;
+          if (match.result === 'CORRECT') {
+            audioCorrect++;
+          }
+
+          // Check therapist unit-level review or overall review
+          if (rec.therapistUnitReviews && rec.therapistUnitReviews[targetUnit]) {
+            therapistReviewed++;
+            if (rec.therapistUnitReviews[targetUnit] === 'CORRECT') {
+              therapistCorrect++;
+            }
+          } else if (rec.therapistResult) {
+            therapistReviewed++;
+            if (rec.therapistResult === 'CORRECT') {
+              therapistCorrect++;
+            }
+          }
+        }
+      } else {
+        // Case B: Single-unit practice recording
+        const isTargetMatch =
+          rec.exerciseId === targetUnit ||
+          rec.exerciseId.includes(targetUnit) ||
+          (targetUnit === 'کا' && (rec.exerciseId === 'ka' || rec.exerciseId === 'ex-qaf-ka-01')) ||
+          (targetUnit === 'کی' && rec.exerciseId === 'ki') ||
+          (targetUnit === 'کے' && rec.exerciseId === 'ke') ||
+          (targetUnit === 'کو' && rec.exerciseId === 'ko');
+
+        if (isTargetMatch) {
+          totalAttempts++;
+          if (rec.autoResult === 'CORRECT') {
+            audioCorrect++;
+          }
+          if (rec.therapistResult) {
+            therapistReviewed++;
+            if (rec.therapistResult === 'CORRECT') {
+              therapistCorrect++;
+            }
+          }
+        }
+      }
+    }
+
+    const audioRate = totalAttempts > 0 ? Math.round((audioCorrect / totalAttempts) * 100) : 0;
+    const therapistRate =
+      therapistReviewed > 0 ? Math.round((therapistCorrect / therapistReviewed) * 100) : null;
+
+    return {
+      unit: targetUnit,
+      totalAttempts,
+      audioCorrect,
+      audioRate,
+      therapistReviewed,
+      therapistCorrect,
+      therapistRate
+    };
+  });
+}
+
+/**
+ * Calculates sequence-specific statistics without combining unrelated exercises into one metric.
+ * Examples:
+ * کا → کی: 75%
+ * کا → کی → کے: 68%
+ * کا → کی → کے → کو: 80%
+ */
+export function calculateSequenceProgressStats(
+  recordings: Recording[],
+  exercises: Exercise[] = []
+): SequenceProgressStat[] {
+  // Find all sequence exercises
+  const sequenceExercises = exercises.filter(
+    (ex) => (ex.targetUnits && ex.targetUnits.length > 1) || ex.difficulty === 'sequence'
+  );
+
+  // If no sequence exercises in list, use standard sequences
+  const targetList =
+    sequenceExercises.length > 0
+      ? sequenceExercises
+      : [
+          {
+            id: 'ka-ki',
+            name: 'Ka + Ki',
+            targetText: 'کا، کی',
+            targetUnits: ['کا', 'کی'],
+            difficulty: 'sequence' as const,
+            isActive: true,
+            createdAt: ''
+          },
+          {
+            id: 'ka-ki-ke',
+            name: 'Ka + Ki + Ke',
+            targetText: 'کا، کی، کے',
+            targetUnits: ['کا', 'کی', 'کے'],
+            difficulty: 'sequence' as const,
+            isActive: true,
+            createdAt: ''
+          },
+          {
+            id: 'ka-ki-ke-ko',
+            name: 'Ka + Ki + Ke + Ko',
+            targetText: 'کا، کی، کے، کو',
+            targetUnits: ['کا', 'کی', 'کے', 'کو'],
+            difficulty: 'sequence' as const,
+            isActive: true,
+            createdAt: ''
+          }
+        ];
+
+  return targetList.map((ex) => {
+    const units = ex.targetUnits || ex.targetText.split(/[،,]/).map((s) => s.trim());
+    const display = units.join(' → ');
+
+    // Filter recordings for this specific sequence
+    const matches = recordings.filter(
+      (r) =>
+        r.exerciseId === ex.id ||
+        (r.unitResults &&
+          r.unitResults.length === units.length &&
+          r.unitResults.every((u, i) => (u.target || u.unit) === units[i]))
+    );
+
+    const totalAttempts = matches.length;
+    let audioCorrect = 0;
+    let therapistReviewed = 0;
+    let therapistCorrect = 0;
+
+    for (const r of matches) {
+      if (r.autoResult === 'CORRECT') {
+        audioCorrect++;
+      }
+      if (r.therapistResult) {
+        therapistReviewed++;
+        if (r.therapistResult === 'CORRECT') {
+          therapistCorrect++;
+        }
+      }
+    }
+
+    const audioRate = totalAttempts > 0 ? Math.round((audioCorrect / totalAttempts) * 100) : 0;
+    const therapistRate =
+      therapistReviewed > 0 ? Math.round((therapistCorrect / therapistReviewed) * 100) : null;
+
+    return {
+      exerciseId: ex.id,
+      name: ex.name,
+      sequenceDisplay: display,
+      targetUnits: units,
+      totalAttempts,
+      audioCorrect,
+      audioRate,
+      therapistReviewed,
+      therapistCorrect,
+      therapistRate
+    };
+  });
+}
+

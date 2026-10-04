@@ -26,7 +26,8 @@ interface PracticeAttemptProps {
     result: TherapistResult,
     remarks?: string,
     excludedFromTraining?: boolean,
-    trainingExclusionReason?: TrainingExclusionReason
+    trainingExclusionReason?: TrainingExclusionReason,
+    unitReviews?: Record<string, TherapistResult>
   ) => Promise<void>;
   onDelete?: (recordingId: string) => Promise<void>;
   allowReview?: boolean;
@@ -59,6 +60,9 @@ export const PracticeAttempt: React.FC<PracticeAttemptProps> = ({
   const [exclusionReason, setExclusionReason] = useState<TrainingExclusionReason>(
     recording.trainingExclusionReason || 'background noise'
   );
+  const [unitReviews, setUnitReviews] = useState<Record<string, TherapistResult>>(
+    recording.therapistUnitReviews || {}
+  );
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [justConfirmed, setJustConfirmed] = useState<TherapistResult | null>(null);
 
@@ -75,7 +79,8 @@ export const PracticeAttempt: React.FC<PracticeAttemptProps> = ({
         selectedResult,
         remarks,
         isExcluded,
-        isExcluded ? exclusionReason : undefined
+        isExcluded ? exclusionReason : undefined,
+        Object.keys(unitReviews).length > 0 ? unitReviews : undefined
       );
       setJustConfirmed(selectedResult);
       setShowReviewPanel(false);
@@ -179,6 +184,51 @@ export const PracticeAttempt: React.FC<PracticeAttemptProps> = ({
       <div>
         <AudioPlayer blob={recording.blob} recordedDuration={recording.duration} />
       </div>
+
+      {/* Sequence Per-Unit Results Display (if sequence recording) */}
+      {recording.unitResults && recording.unitResults.length > 1 && (
+        <div className="w-full bg-slate-50 border border-slate-200/90 rounded-xl p-3 space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <span>Sequence Units ({recording.unitResults.length})</span>
+            <span className="font-mono text-slate-700">
+              {recording.unitResults.filter((u) => u.result === 'CORRECT').length} / {recording.unitResults.length} Good
+            </span>
+          </div>
+
+          <div className="divide-y divide-slate-200/60 bg-white rounded-lg border border-slate-100 overflow-hidden">
+            {recording.unitResults.map((u, i) => (
+              <div key={i} className="flex items-center justify-between px-3 py-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-arabic font-bold text-base text-slate-900">
+                    {u.target || u.unit}
+                  </span>
+                  {typeof u.startTime === 'number' && typeof u.endTime === 'number' && (
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {u.startTime.toFixed(2)}s - {u.endTime.toFixed(2)}s
+                    </span>
+                  )}
+                </div>
+
+                {u.result === 'CORRECT' && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <CheckCircle2 className="w-3 h-3" /> ✓ CORRECT
+                  </span>
+                )}
+                {(u.result === 'NEEDS_PRACTICE' || (u.result as string) === 'INCORRECT') && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                    <XCircle className="w-3 h-3" /> ✗ PRACTICE
+                  </span>
+                )}
+                {u.result === 'UNCERTAIN' && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    <HelpCircle className="w-3 h-3" /> ? UNCERTAIN
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Immediate confirmation banner */}
       {justConfirmed && (
@@ -286,6 +336,81 @@ export const PracticeAttempt: React.FC<PracticeAttemptProps> = ({
                   </button>
                 </div>
               </div>
+
+              {/* Optional Individual Unit Review for Sequences */}
+              {recording.unitResults && recording.unitResults.length > 1 && (
+                <div className="p-3 bg-white rounded-xl border border-slate-200/90 space-y-2.5">
+                  <span className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Individual Unit Review (Optional):
+                  </span>
+                  <div className="divide-y divide-slate-100">
+                    {recording.unitResults.map((u) => {
+                      const unitKey = u.target || u.unit;
+                      const currentVal = unitReviews[unitKey];
+                      return (
+                        <div key={unitKey} className="flex items-center justify-between py-1.5 gap-2">
+                          <span className="font-arabic font-bold text-base text-slate-900 w-12">
+                            {unitKey}
+                          </span>
+                          <div className="flex gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setUnitReviews((prev) => ({
+                                  ...prev,
+                                  [unitKey]: prev[unitKey] === 'CORRECT' ? undefined! : 'CORRECT'
+                                }))
+                              }
+                              className={clsx(
+                                'px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer',
+                                currentVal === 'CORRECT'
+                                  ? 'bg-emerald-600 text-white border-emerald-600'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-emerald-50'
+                              )}
+                            >
+                              ✓ Correct
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setUnitReviews((prev) => ({
+                                  ...prev,
+                                  [unitKey]: prev[unitKey] === 'INCORRECT' ? undefined! : 'INCORRECT'
+                                }))
+                              }
+                              className={clsx(
+                                'px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer',
+                                currentVal === 'INCORRECT'
+                                  ? 'bg-rose-600 text-white border-rose-600'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-rose-50'
+                              )}
+                            >
+                              ✗ Incorrect
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setUnitReviews((prev) => ({
+                                  ...prev,
+                                  [unitKey]: prev[unitKey] === 'UNCERTAIN' ? undefined! : 'UNCERTAIN'
+                                }))
+                              }
+                              className={clsx(
+                                'px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer',
+                                currentVal === 'UNCERTAIN'
+                                  ? 'bg-amber-500 text-white border-amber-500'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-amber-50'
+                              )}
+                            >
+                              ? Uncertain
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Notes Input */}
               <div>

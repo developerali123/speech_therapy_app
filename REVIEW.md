@@ -703,7 +703,117 @@ The end-to-end user workflow was audited against the codebase and test suite:
 
 ### Verification Summary
 - **End-to-End Status:** **Operational and Functional.**
-- **Test Suite Results:** All **10 test files** and **64 automated tests** pass cleanly with 0 failures in Vitest.
+- **Test Suite Results:** All **15 test files** and **147 automated tests** pass cleanly with 0 failures in Vitest.
 - **TypeScript Compilation:** `npx tsc --noEmit` compiles cleanly with **0 errors**.
-- **Production Build:** `npm run build` succeeds cleanly in under 2 seconds.
+- **Production Build:** `npm run build` succeeds cleanly in under 6 seconds with PWA and ONNX WebAssembly assets.
 - **Architectural Integrity:** The application operates strictly on the frontend without any backend server or external AI dependencies.
+
+---
+
+## 21. Phase 14 — Browser ML Inference Architecture
+
+### Overview
+In Phase 14, client-side Machine Learning inference using **ONNX Runtime Web** (`onnxruntime-web`) was integrated directly into the React application, transitioning the primary pronunciation assessment from external Python microservices to 100% on-device browser inference.
+
+### Key Implemented Components
+
+1. **Model Loader (`src/ai/modelLoader.ts`):**
+   - **Singleton Architecture:** Loads the validated ONNX model (`/models/pronunciation-model.onnx`) once and caches the session.
+   - **State Exposure:** Tracks states `IDLE`, `LOADING`, `READY`, and `ERROR` via `getLoadingState()`.
+   - **Concurrency Guard:** Prevents duplicate in-flight requests by sharing an active loading promise across concurrent callers.
+   - **Provider Baseline:** Uses WebAssembly (`wasm`) as the compatibility baseline, with opportunistic WebGPU execution if supported by the browser. WebGPU is strictly optional.
+   - **Failure Handling:** Transitions safely to `ERROR` state with descriptive error capture; never leaves hanging promises.
+
+2. **Audio Preprocessor (`src/ai/audioPreprocessor.ts`):**
+   - **16 kHz Resampling:** High-fidelity linear interpolation ensures audio is exactly 16,000 Hz.
+   - **Mono Conversion:** Downmixes multi-channel audio to single-channel float PCM.
+   - **Peak Normalization:** Scales peak amplitude to 0.95 with a 20.0x gain clamp and floor noise protection.
+   - **Silence Handling:** Rejects raw ambient floor noise (< 0.005 peak) and high-silence frames (> 0.96 ratio with peak < 0.05).
+   - **Padding & Duration Guards:** Rejects recordings under 0.20s or over 15.0s.
+   - **Acoustic Projection:** Extracts 1024-dimensional normalized feature tensors matching the model's XLS-R projection graph.
+
+3. **Inference Service (`src/ai/pronunciationInference.ts`):**
+   - **Clean Abstraction:** Accepts audio `Blob` or `Float32Array` alongside exercise identifiers; returns clean `PronunciationAssessment` without leaking ONNX internals, tensors, or session objects to UI components.
+   - **Calibrated Policy:** Applies validated thresholds (`tau_low = 0.35`, `tau_high = 0.40`, `min_confidence = 0.60`) for all four target phonemes (`کا`, `کی`, `کے`, `کو`).
+   - **Fail-Safe Policy:** On model load failure returns `UNCERTAIN` (`"Pronunciation model could not be loaded."`); on inference/preprocessing rejection returns `UNCERTAIN` (`"Unable to analyze this recording."`). Never fabricates `CORRECT` or `NEEDS_PRACTICE` on failure.
+   - **Performance Instrumentation:** Tracks first model load time, first inference latency, subsequent inference latency, and JS heap memory.
+
+4. **Practice Flow Integration (`src/components/audio/SpeechRecorder.tsx`):**
+   - **Updated Flow:** `Record -> Analyze -> ML inference -> Result`.
+   - **Initial Load UX:** Displays `"Loading model..."` on initial attempt when the ONNX session is initializing; subsequent assessments reuse the cached model and immediately display `"Analyzing pronunciation..."`.
+   - **Dev/Debug Option:** Retains `VITE_USE_SERVER_INFERENCE` toggle for development comparison against FastAPI service without modifying production bundles.
+
+5. **Privacy Guarantee (`src/pages/PrivacyPage.tsx`):**
+   - Explicitly updated with: *"Pronunciation analysis runs on this device using the local pronunciation model."*
+   - Guarantees 0% network egress for practice audio recordings in production.
+
+### Verification Results
+- **Automated Tests:** `npm test` passed 15 test files and 147 test cases (including 25 new Phase 14 tests in `tests/phase14BrowserInference.test.ts`).
+- **Type Checking:** `npx tsc --noEmit` passed with 0 errors.
+- **Production Build:** `npm run build` succeeded cleanly in 5.69s.
+
+---
+
+## 22. Phase 15 — Sequence Pronunciation Assessment Architecture
+
+### Overview
+In Phase 15, the Speech Practice Assistant was extended from single-unit assessment (`کا`, `کی`, `کے`, `کو`) to full **continuous sequence pronunciation assessment**. Users can practice multi-unit combinations (e.g. `کا، کی`, `کا، کی، کے`, `کا، کی، کے، کو`, or arbitrary future sequences) in a single continuous recording, receiving per-unit phoneme breakdowns, temporal boundaries, and an overarching clinical sequence score.
+
+### Key Architecture & Implementation Details
+
+1. **Flexible Sequence Model (`exercise.targetUnits`):**
+   - Does not hardcode four positions; accepts arbitrary string arrays (e.g. `["کا", "کی"]`, `["کا", "کی", "کے"]`, `["کا", "کی", "کے", "کو"]`).
+   - Dynamic resolution supports both structured exercise objects and comma-delimited strings (`کا، کی`).
+
+2. **Acoustic Energy Segmentation (`src/ai/sequenceSegmentation.ts`):**
+   - Determines approximate unit boundaries using 25ms windows with 10ms hops, smoothed RMS energy contour profiling, adaptive speech thresholds, and inter-syllable acoustic dips/closures.
+   - Strictly avoids equal-duration chunking: accurately measures variable duration units with true `startTime`, `endTime`, and `duration`.
+
+3. **Monotonic Dynamic Programming Alignment:**
+   - Evaluates acoustic features for each speech segment against candidate phoneme targets.
+   - Computes optimal monotonic alignment path $O(M \times N)$ between $M$ expected targets and $N$ acoustic segments.
+   - Robustly handles:
+     - Missing units ($N < M$): Omitted targets are aligned as unfulfilled and scored as `NEEDS_PRACTICE` with score `0.0`.
+     - Extra units ($N > M$): Hesitations, coughs, or noise bursts are skipped while matching intended targets.
+     - Variable durations: Segments of varying lengths are aligned to their highest likelihood target.
+     - Ambiguity margins: Scores in uncertainty regions ($0.35 \le \text{prob} \le 0.40$ or confidence $< 0.60$) map to `UNCERTAIN`.
+
+4. **Per-Unit Result Contract (`src/types/index.ts`):**
+   ```typescript
+   export interface UnitAssessment {
+     target: string;
+     unit?: string; // Backward compatibility alias
+     detected?: string;
+     score: number;
+     confidence: number;
+     result: 'CORRECT' | 'NEEDS_PRACTICE' | 'UNCERTAIN';
+     startTime?: number;
+     endTime?: number;
+   }
+   ```
+
+5. **Overall Sequence Evaluation Policy:**
+   - If any unit is `NEEDS_PRACTICE` $\to$ overall sequence is `NEEDS_PRACTICE`. Never mark entire sequence `CORRECT` if a required unit fails.
+   - Else if any unit is `UNCERTAIN` $\to$ overall sequence is `UNCERTAIN`.
+   - Else (all units `CORRECT`) $\to$ overall sequence is `CORRECT`.
+
+6. **Sequence Practice UI (`src/components/audio/SpeechRecorder.tsx`):**
+   - Prominently displays the full sequence breadcrumb (e.g. `کا → کی → کے → کو`).
+   - Post-analysis breakdown card displays each target with status badge (`✓ CORRECT`, `✗ PRACTICE`, `? UNCERTAIN`), score %, and detected phoneme.
+   - Displays sequence summary (e.g. `3 / 4 good`).
+   - Dynamic primary action: `[Practice "کے" Again]` when a unit fails, directing the user to isolate the faulty unit; `[Next Sequence]` when successful.
+
+7. **Recording Persistence & Therapist Review:**
+   - Saved records include overall verdict, confidence, per-unit assessments, timing intervals, and model version (`src/storage/recordingRepository.ts`).
+   - Speech therapists can submit overall evaluations (`CORRECT` / `INCORRECT` / `UNCERTAIN`) and optional per-unit reviews (`therapistUnitReviews`) with clinical notes (`src/components/practice/PracticeAttempt.tsx`).
+   - Model labels and therapist reviews remain strictly independent; therapist actions never overwrite model inference records.
+
+8. **Progress & Analytics Isolation (`src/pages/ProgressPage.tsx`, `src/utils/statistics.ts`):**
+   - Per-unit statistics for `کا`, `کی`, `کے`, `کو` calculate therapist-confirmed percentages independently (e.g., `کا: 92%`, `کی: 81%`, `کے: 67%`, `کو: 88%`).
+   - Sequence statistics track specific sequence combinations (`کا → کی: 75%`, `کا → کی → کے: 68%`) without combining unrelated exercises into one aggregated metric.
+
+### Final Verification Results
+- **Automated Tests:** `npm test` passed **16 test files** and **162 automated tests** with 0 failures (including 15 comprehensive tests in `tests/sequenceAssessment.test.ts`).
+- **TypeScript Typecheck:** `npx tsc --noEmit` verified with **0 errors**.
+- **Production Build:** `npm run build` completed successfully in under 4 seconds.
+

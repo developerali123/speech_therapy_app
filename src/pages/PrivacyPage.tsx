@@ -50,6 +50,13 @@ export const PrivacyPage: React.FC = () => {
           <p className="flex items-start gap-2">
             <span className="text-teal-600 font-bold">•</span>
             <span>
+              <strong>Pronunciation analysis runs on this device using the local pronunciation model.</strong> Practice recordings are processed entirely within your browser using client-side machine learning inference and are never sent or uploaded to an external server in production.
+            </span>
+          </p>
+
+          <p className="flex items-start gap-2">
+            <span className="text-teal-600 font-bold">•</span>
+            <span>
               <strong>The application does not automatically upload your recordings to a server.</strong> There is no cloud backend, third-party speech API, or analytics tracker intercepting your voice.
             </span>
           </p>

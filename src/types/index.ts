@@ -40,9 +40,14 @@ export type PronunciationVerdict = 'CORRECT' | 'INCORRECT' | 'NEEDS_PRACTICE' | 
 export type AssessmentMethod = 'ML' | 'DSP' | 'NONE';
 
 export interface UnitAssessment {
+  target: string;
   unit: string;
+  detected?: string;
   score: number;
+  confidence: number;
   result: 'CORRECT' | 'NEEDS_PRACTICE' | 'UNCERTAIN';
+  startTime?: number;
+  endTime?: number;
 }
 
 export type MLAssessmentResult = 'CORRECT' | 'NEEDS_PRACTICE' | 'UNCERTAIN';
@@ -58,6 +63,11 @@ export interface MLPronunciationResponse {
   reason?: string;
   isServiceUnavailable?: boolean;
 }
+
+export type PronunciationAssessment = MLPronunciationResponse & {
+  inferenceTimeMs?: number;
+  memoryUsageMb?: number | null;
+};
 
 export interface AudioFeatures {
   speechDuration: number;
@@ -153,6 +163,7 @@ export interface Recording {
   pronunciationScore?: number;
   confidence?: number;
   unitResults?: UnitAssessment[];
+  therapistUnitReviews?: Record<string, TherapistResult>;
 }
 
 export interface TrainingExample {

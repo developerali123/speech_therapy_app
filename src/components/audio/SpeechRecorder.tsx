@@ -18,6 +18,11 @@ import {
   assessPronunciationViaML,
   mapMLToPronunciationResult
 } from '../../services/pronunciationAssessmentService';
+import {
+  runPronunciationInference,
+  mapAssessmentToPronunciationResult
+} from '../../ai/pronunciationInference';
+import { isModelReady } from '../../ai/modelLoader';
 import { PronunciationResult } from '../../types';
 import { formatDurationSeconds } from '../../utils/audio';
 
@@ -29,6 +34,7 @@ interface SpeechRecorderProps {
     analysis?: PronunciationResult
   ) => Promise<void>;
   targetText?: string;
+  targetUnits?: string[];
   exerciseId?: string;
   isSavingAttempt?: boolean;
   onNextAttempt?: () => void;
@@ -38,6 +44,7 @@ interface SpeechRecorderProps {
 export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
   onSaveAttempt,
   targetText = 'کا',
+  targetUnits,
   exerciseId = 'ex-qaf-ka-01',
   isSavingAttempt = false,
   onNextAttempt,
@@ -56,6 +63,7 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
 
   const [analysisResult, setAnalysisResult] = useState<PronunciationResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [analysisStage, setAnalysisStage] = useState<'idle' | 'loading_model' | 'analyzing'>('idle');
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
   const [hasSavedCurrentTake, setHasSavedCurrentTake] = useState<boolean>(false);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
@@ -78,6 +86,8 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
     let isMounted = true;
 
     if (state === 'recorded' && audioBlob && !hasSavedCurrentTake) {
+      const alreadyReady = isModelReady();
+      setAnalysisStage(alreadyReady ? 'analyzing' : 'loading_model');
       setIsAnalyzing(true);
       setAnalysisResult(null);
 
@@ -91,12 +101,30 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
         }
       }
 
-      assessPronunciationViaML(audioBlob, exerciseId)
-        .then(async (mlRes) => {
+      // Dev/debug override to allow server inference if explicitly flagged
+      const useServerInference =
+        typeof process !== 'undefined' && process.env?.VITE_USE_SERVER_INFERENCE === 'true';
+
+      const assessmentPromise = useServerInference
+        ? assessPronunciationViaML(audioBlob, exerciseId).then(mapMLToPronunciationResult)
+        : (async () => {
+            const assessPromise = runPronunciationInference(audioBlob, {
+              id: exerciseId,
+              targetText,
+              targetUnits
+            });
+            // Transition from loading_model to analyzing
+            setAnalysisStage('analyzing');
+            const localAssessment = await assessPromise;
+            return mapAssessmentToPronunciationResult(localAssessment);
+          })();
+
+      assessmentPromise
+        .then(async (mapped) => {
           if (!isMounted) return;
-          const mapped = mapMLToPronunciationResult(mlRes);
           setAnalysisResult(mapped);
           setIsAnalyzing(false);
+          setAnalysisStage('idle');
           setHasSavedCurrentTake(true);
           try {
             await onSaveAttempt(audioBlob, duration, mimeType, mapped);
@@ -113,10 +141,11 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
             confidence: 0,
             pronunciationScore: 0,
             assessmentMethod: 'ML',
-            reason: 'Pronunciation model unavailable. Your recording was saved.'
+            reason: 'Unable to analyze this recording.'
           };
           setAnalysisResult(fallbackRes);
           setIsAnalyzing(false);
+          setAnalysisStage('idle');
           setHasSavedCurrentTake(true);
           try {
             await onSaveAttempt(audioBlob, duration, mimeType, fallbackRes);
@@ -127,6 +156,7 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
     } else if (state === 'idle') {
       setAnalysisResult(null);
       setIsAnalyzing(false);
+      setAnalysisStage('idle');
       setHasSavedCurrentTake(false);
       setIsPlayingAudio(false);
       cleanAudioUrl();
@@ -135,7 +165,7 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [state, audioBlob, exerciseId, hasSavedCurrentTake, onSaveAttempt, duration, mimeType, cleanAudioUrl]);
+  }, [state, audioBlob, exerciseId, targetText, targetUnits, hasSavedCurrentTake, onSaveAttempt, duration, mimeType, cleanAudioUrl]);
 
   // Handle [ Listen ] toggle
   const handleToggleListen = () => {
@@ -273,146 +303,267 @@ export const SpeechRecorder: React.FC<SpeechRecorderProps> = ({
               <div className="w-10 h-10 border-3 border-teal-600 border-t-transparent rounded-full animate-spin" />
               <div className="space-y-1">
                 <p className="text-base font-bold text-slate-900 tracking-wide animate-pulse">
-                  Analyzing pronunciation...
+                  {analysisStage === 'loading_model' ? 'Loading model...' : 'Analyzing pronunciation...'}
                 </p>
                 <p className="text-xs text-slate-500 font-medium">
-                  Evaluating sound characteristics against confirmed reference recordings
+                  {analysisStage === 'loading_model'
+                    ? 'Preparing local pronunciation model on this device...'
+                    : 'Evaluating sound characteristics against confirmed reference recordings'}
                 </p>
               </div>
             </div>
           ) : (
             /* B. IMMEDIATE ANALYSIS FEEDBACK CARD */
-            analysisResult && (
-              <div
-                className={`p-5 sm:p-6 rounded-3xl border text-center flex flex-col items-center gap-3.5 transition-all shadow-xs ${
-                  analysisResult.result === 'CORRECT'
-                    ? 'bg-emerald-50/90 border-emerald-200 text-emerald-950'
-                    : analysisResult.result === 'INCORRECT' || analysisResult.result === 'NEEDS_PRACTICE'
-                    ? 'bg-rose-50/90 border-rose-200 text-rose-950'
-                    : 'bg-amber-50/90 border-amber-200 text-amber-950'
-                }`}
-                role="status"
-                aria-live="polite"
-              >
-                {/* Result Tag & Sound Badge */}
-                <div className="flex items-center gap-2.5 flex-wrap justify-center">
-                  <span className="text-2xl font-arabic font-bold text-slate-900" aria-label={`Target: ${targetText}`}>
-                    {targetText}
-                  </span>
+            analysisResult && (() => {
+              const isSequenceAssessment =
+                (analysisResult.unitResults && analysisResult.unitResults.length > 1) ||
+                (targetUnits && targetUnits.length > 1);
+              const units = analysisResult.unitResults || [];
+              const goodCount = units.filter((u) => u.result === 'CORRECT').length;
+              const totalCount = units.length || (targetUnits ? targetUnits.length : 1);
+              const firstFailedUnit = units.find(
+                (u) => u.result === 'NEEDS_PRACTICE' || (u.result as string) === 'INCORRECT'
+              );
 
-                  {analysisResult.result === 'CORRECT' && (
-                    <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-sm sm:text-base shadow-2xs">
-                      <Check className="w-5 h-5 stroke-[3]" />
-                      <span>✓ GOOD MATCH</span>
-                    </div>
-                  )}
+              return (
+                <div
+                  className={`p-5 sm:p-6 rounded-3xl border text-center flex flex-col items-center gap-3.5 transition-all shadow-xs ${
+                    analysisResult.result === 'CORRECT'
+                      ? 'bg-emerald-50/90 border-emerald-200 text-emerald-950'
+                      : analysisResult.result === 'INCORRECT' || analysisResult.result === 'NEEDS_PRACTICE'
+                      ? 'bg-rose-50/90 border-rose-200 text-rose-950'
+                      : 'bg-amber-50/90 border-amber-200 text-amber-950'
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {isSequenceAssessment ? (
+                    /* Sequence Feedback Header & Per-Unit Table */
+                    <div className="w-full flex flex-col gap-2.5">
+                      <div className="flex items-center justify-between w-full px-1">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Sequence Result
+                        </span>
+                        <span className="text-xs font-mono font-bold text-slate-700 bg-white/90 px-2.5 py-0.5 rounded-lg border border-slate-200/80">
+                          {goodCount} / {totalCount} good
+                        </span>
+                      </div>
 
-                  {(analysisResult.result === 'NEEDS_PRACTICE' || analysisResult.result === 'INCORRECT') && (
-                    <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-rose-100 text-rose-800 font-extrabold text-sm sm:text-base shadow-2xs">
-                      <X className="w-5 h-5 stroke-[3]" />
-                      <span>✗ NEEDS PRACTICE</span>
-                    </div>
-                  )}
+                      {/* Prominent Target Sequence */}
+                      <div className="py-2 px-3 bg-white/95 rounded-2xl border border-slate-200 flex items-center justify-center gap-2 flex-wrap text-xl sm:text-2xl font-bold font-arabic text-slate-900 shadow-2xs">
+                        {targetUnits ? targetUnits.join('   →   ') : targetText}
+                      </div>
 
-                  {analysisResult.result === 'UNCERTAIN' && (
-                    <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-sm sm:text-base shadow-2xs">
-                      <HelpCircle className="w-5 h-5 stroke-[2.5]" />
-                      <span>? UNCERTAIN</span>
-                    </div>
-                  )}
+                      {/* Per-Unit Result Box */}
+                      <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-2xs divide-y divide-slate-100 overflow-hidden text-left">
+                        {units.map((u, i) => (
+                          <div key={i} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50/60 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl sm:text-2xl font-arabic font-bold text-slate-900">
+                                {u.target || u.unit}
+                              </span>
+                              {u.detected && u.detected !== (u.target || u.unit) && (
+                                <span className="text-[11px] text-slate-400 font-arabic">
+                                  ({u.detected})
+                                </span>
+                              )}
+                            </div>
 
-                  <span className="text-xs font-mono font-semibold text-slate-600 bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200/70">
-                    Confidence: {Math.round((analysisResult.confidence ?? analysisResult.similarity) * 100)}%
-                  </span>
-                </div>
-
-                {/* Clear Feedback Message */}
-                <p className="text-sm sm:text-base font-semibold leading-relaxed max-w-sm">
-                  {analysisResult.reason}
-                </p>
-
-                {/* Required Clinical Limitation Notice */}
-                <div className="flex items-start gap-1.5 text-[11px] text-slate-500 font-medium bg-white/80 p-2.5 rounded-xl border border-slate-200/60 text-left">
-                  <Activity className="w-3.5 h-3.5 text-teal-600 shrink-0 mt-0.5" />
-                  <span>Audio-based practice feedback. Confirm pronunciation with your speech therapist.</span>
-                </div>
-
-                {/* UX: Action Buttons with Obvious Next Action */}
-                <div className="w-full flex flex-col gap-2.5 pt-2">
-                  {/* Primary & Secondary Action based on Result */}
-                  {analysisResult.result === 'CORRECT' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <button
-                        type="button"
-                        onClick={handleNextAttempt}
-                        disabled={isSavingAttempt}
-                        id="next-attempt-btn"
-                        className="py-3.5 px-5 rounded-2xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-teal-700/20 transition cursor-pointer"
-                      >
-                        <span>{isSessionFinished ? 'Complete Session' : 'Next Attempt'}</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleTryAgain}
-                        disabled={isSavingAttempt}
-                        id="try-again-btn"
-                        className="py-3.5 px-4 rounded-2xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
-                      >
-                        <RefreshCw className="w-4 h-4 text-slate-500" />
-                        <span>Try Again</span>
-                      </button>
+                            {u.result === 'CORRECT' && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs shadow-2xs">
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                <span>✓ CORRECT</span>
+                              </span>
+                            )}
+                            {(u.result === 'NEEDS_PRACTICE' || (u.result as string) === 'INCORRECT') && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 font-extrabold text-xs shadow-2xs">
+                                <X className="w-3.5 h-3.5 stroke-[3]" />
+                                <span>✗ PRACTICE</span>
+                              </span>
+                            )}
+                            {u.result === 'UNCERTAIN' && (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-extrabold text-xs shadow-2xs">
+                                <HelpCircle className="w-3.5 h-3.5 stroke-[2.5]" />
+                                <span>? UNCERTAIN</span>
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : (
-                    /* INCORRECT or UNCERTAIN: [ Try Again ] is primary */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <button
-                        type="button"
-                        onClick={handleTryAgain}
-                        disabled={isSavingAttempt}
-                        id="try-again-btn"
-                        className="py-3.5 px-5 rounded-2xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-teal-700/20 transition cursor-pointer"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                        <span>Try Again</span>
-                      </button>
+                    /* Single-Unit Feedback Header */
+                    <div className="flex items-center gap-2.5 flex-wrap justify-center">
+                      <span className="text-2xl font-arabic font-bold text-slate-900" aria-label={`Target: ${targetText}`}>
+                        {targetText}
+                      </span>
 
-                      <button
-                        type="button"
-                        onClick={handleNextAttempt}
-                        disabled={isSavingAttempt}
-                        id="next-attempt-btn"
-                        className="py-3.5 px-4 rounded-2xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
-                      >
-                        <span>Next Attempt</span>
-                        <ArrowRight className="w-4 h-4 text-slate-500" />
-                      </button>
+                      {analysisResult.result === 'CORRECT' && (
+                        <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-sm sm:text-base shadow-2xs">
+                          <Check className="w-5 h-5 stroke-[3]" />
+                          <span>✓ GOOD MATCH</span>
+                        </div>
+                      )}
+
+                      {(analysisResult.result === 'NEEDS_PRACTICE' || analysisResult.result === 'INCORRECT') && (
+                        <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-rose-100 text-rose-800 font-extrabold text-sm sm:text-base shadow-2xs">
+                          <X className="w-5 h-5 stroke-[3]" />
+                          <span>✗ NEEDS PRACTICE</span>
+                        </div>
+                      )}
+
+                      {analysisResult.result === 'UNCERTAIN' && (
+                        <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-sm sm:text-base shadow-2xs">
+                          <HelpCircle className="w-5 h-5 stroke-[2.5]" />
+                          <span>? UNCERTAIN</span>
+                        </div>
+                      )}
+
+                      <span className="text-xs font-mono font-semibold text-slate-600 bg-white/90 px-2.5 py-1 rounded-lg border border-slate-200/70">
+                        Confidence: {Math.round((analysisResult.confidence ?? analysisResult.similarity) * 100)}%
+                      </span>
                     </div>
                   )}
 
-                  {/* Also Allow: [ Listen ] to Playback */}
-                  <button
-                    type="button"
-                    onClick={handleToggleListen}
-                    className="w-full py-2.5 px-4 rounded-xl bg-white/90 border border-slate-200 text-slate-700 hover:bg-white font-medium text-xs flex items-center justify-center gap-2 transition cursor-pointer"
-                    id="listen-recording-btn"
-                  >
-                    {isPlayingAudio ? (
-                      <>
-                        <Pause className="w-3.5 h-3.5 fill-current text-teal-600" />
-                        <span>Pause Playback</span>
-                      </>
+                  {/* Clear Feedback Message */}
+                  <p className="text-sm sm:text-base font-semibold leading-relaxed max-w-sm">
+                    {analysisResult.reason}
+                  </p>
+
+                  {/* Required Clinical Limitation Notice */}
+                  <div className="flex items-start gap-1.5 text-[11px] text-slate-500 font-medium bg-white/80 p-2.5 rounded-xl border border-slate-200/60 text-left">
+                    <Activity className="w-3.5 h-3.5 text-teal-600 shrink-0 mt-0.5" />
+                    <span>Audio-based practice feedback. Confirm pronunciation with your speech therapist.</span>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="w-full flex flex-col gap-2.5 pt-2">
+                    {isSequenceAssessment ? (
+                      /* Sequence Action Buttons */
+                      firstFailedUnit ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <button
+                            type="button"
+                            onClick={handleTryAgain}
+                            disabled={isSavingAttempt}
+                            id="try-again-btn"
+                            className="py-3.5 px-5 rounded-2xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-teal-700/20 transition cursor-pointer"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                            <span>Practice &ldquo;{firstFailedUnit.target || firstFailedUnit.unit}&rdquo; Again</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleNextAttempt}
+                            disabled={isSavingAttempt}
+                            id="next-attempt-btn"
+                            className="py-3.5 px-4 rounded-2xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+                          >
+                            <span>Next Sequence</span>
+                            <ArrowRight className="w-4 h-4 text-slate-500" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <button
+                            type="button"
+                            onClick={handleNextAttempt}
+                            disabled={isSavingAttempt}
+                            id="next-attempt-btn"
+                            className="py-3.5 px-5 rounded-2xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-teal-700/20 transition cursor-pointer"
+                          >
+                            <span>{isSessionFinished ? 'Complete Session' : 'Next Sequence'}</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleTryAgain}
+                            disabled={isSavingAttempt}
+                            id="try-again-btn"
+                            className="py-3.5 px-4 rounded-2xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+                          >
+                            <RefreshCw className="w-4 h-4 text-slate-500" />
+                            <span>Practice Again</span>
+                          </button>
+                        </div>
+                      )
+                    ) : analysisResult.result === 'CORRECT' ? (
+                      /* Single Unit Correct Action Buttons */
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <button
+                          type="button"
+                          onClick={handleNextAttempt}
+                          disabled={isSavingAttempt}
+                          id="next-attempt-btn"
+                          className="py-3.5 px-5 rounded-2xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-teal-700/20 transition cursor-pointer"
+                        >
+                          <span>{isSessionFinished ? 'Complete Session' : 'Next Attempt'}</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleTryAgain}
+                          disabled={isSavingAttempt}
+                          id="try-again-btn"
+                          className="py-3.5 px-4 rounded-2xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+                        >
+                          <RefreshCw className="w-4 h-4 text-slate-500" />
+                          <span>Try Again</span>
+                        </button>
+                      </div>
                     ) : (
-                      <>
-                        <Play className="w-3.5 h-3.5 fill-current text-teal-600" />
-                        <span>Listen to Your Attempt ({formatDurationSeconds(duration)})</span>
-                      </>
+                      /* Single Unit Incorrect / Uncertain Action Buttons */
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <button
+                          type="button"
+                          onClick={handleTryAgain}
+                          disabled={isSavingAttempt}
+                          id="try-again-btn"
+                          className="py-3.5 px-5 rounded-2xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-md shadow-teal-700/20 transition cursor-pointer"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          <span>Try Again</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleNextAttempt}
+                          disabled={isSavingAttempt}
+                          id="next-attempt-btn"
+                          className="py-3.5 px-4 rounded-2xl bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-sm flex items-center justify-center gap-1.5 transition cursor-pointer"
+                        >
+                          <span>Next Attempt</span>
+                          <ArrowRight className="w-4 h-4 text-slate-500" />
+                        </button>
+                      </div>
                     )}
-                  </button>
+
+                    {/* Listen Button */}
+                    <button
+                      type="button"
+                      onClick={handleToggleListen}
+                      className="w-full py-2.5 px-4 rounded-xl bg-white/90 border border-slate-200 text-slate-700 hover:bg-white font-medium text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                      id="listen-recording-btn"
+                    >
+                      {isPlayingAudio ? (
+                        <>
+                          <Pause className="w-3.5 h-3.5 fill-current text-teal-600" />
+                          <span>Pause Playback</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 fill-current text-teal-600" />
+                          <span>Listen to Your Attempt ({formatDurationSeconds(duration)})</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )
+              );
+            })()
           )}
         </div>
       )}

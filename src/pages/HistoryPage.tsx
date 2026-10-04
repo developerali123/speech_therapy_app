@@ -69,7 +69,10 @@ export const HistoryPage: React.FC = () => {
   const handleTherapistReview = async (
     recordingId: string,
     result: TherapistResult,
-    remarks?: string
+    remarks?: string,
+    excludedFromTraining?: boolean,
+    trainingExclusionReason?: import('../types').TrainingExclusionReason,
+    unitReviews?: Record<string, TherapistResult>
   ) => {
     const target = recordings.find(r => r.id === recordingId);
     if (!target) return;
@@ -78,7 +81,10 @@ export const HistoryPage: React.FC = () => {
       ...target,
       therapistResult: result,
       therapistRemarks: remarks?.trim() || '',
-      therapistReviewedAt: new Date().toISOString()
+      therapistReviewedAt: new Date().toISOString(),
+      excludedFromTraining: excludedFromTraining ?? target.excludedFromTraining,
+      trainingExclusionReason: trainingExclusionReason ?? target.trainingExclusionReason,
+      therapistUnitReviews: unitReviews ?? target.therapistUnitReviews
     };
 
     await updateRecording(updated);

@@ -14,8 +14,15 @@ import io
 import math
 import struct
 import wave
+import os
+import sys
 import pytest
 from fastapi.testclient import TestClient
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+svc_root = os.path.abspath(os.path.join(current_dir, ".."))
+if svc_root not in sys.path:
+    sys.path.insert(0, svc_root)
 
 from src.app import app, model_instance
 

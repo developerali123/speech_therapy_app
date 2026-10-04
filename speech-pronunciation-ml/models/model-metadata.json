@@ -1,0 +1,99 @@
+{
+  "modelName": "pronunciation-model.onnx",
+  "modelVersion": "xlsr-v1.0-linear-onnx",
+  "format": "ONNX",
+  "opsetVersion": 17,
+  "input": {
+    "name": "features",
+    "type": "float32",
+    "shape": [
+      "batch_size",
+      1024
+    ],
+    "description": "1024-dimensional normalized acoustic projection representation"
+  },
+  "outputs": [
+    {
+      "name": "probabilities",
+      "type": "float32",
+      "shape": [
+        "batch_size",
+        4
+      ],
+      "description": "Posterior probabilities P(CORRECT) for targets [کا, کی, کے, کو]"
+    },
+    {
+      "name": "logits",
+      "type": "float32",
+      "shape": [
+        "batch_size",
+        4
+      ],
+      "description": "Pre-sigmoid linear activation scores"
+    }
+  ],
+  "preprocessing": {
+    "targetSampleRate": 16000,
+    "channels": 1,
+    "minDurationSeconds": 0.2,
+    "maxDurationSeconds": 15.0,
+    "targetPeakAmplitude": 0.95,
+    "silenceThresholdRatio": 0.96,
+    "minSpeechEnergy": 0.015,
+    "featureExtraction": {
+      "method": "acoustic_representation_projection",
+      "embeddingDim": 1024,
+      "baseFrequencyStep": 7.8125,
+      "frameLength": 512
+    }
+  },
+  "targets": {
+    "order": [
+      "کا",
+      "کی",
+      "کے",
+      "کو"
+    ],
+    "exerciseMapping": {
+      "ex-qaf-ka-01": 0,
+      "ka": 0,
+      "ki": 1,
+      "ke": 2,
+      "ko": 3
+    },
+    "priorShifts": {
+      "کا": 0.05,
+      "کی": 0.02,
+      "کے": 0.08,
+      "کو": 0.03
+    },
+    "thresholds": {
+      "کا": {
+        "tau_low": 0.35,
+        "tau_high": 0.4,
+        "min_confidence": 0.6
+      },
+      "کی": {
+        "tau_low": 0.35,
+        "tau_high": 0.4,
+        "min_confidence": 0.6
+      },
+      "کے": {
+        "tau_low": 0.35,
+        "tau_high": 0.4,
+        "min_confidence": 0.6
+      },
+      "کو": {
+        "tau_low": 0.35,
+        "tau_high": 0.4,
+        "min_confidence": 0.6
+      }
+    }
+  },
+  "decisionPolicy": {
+    "rule": "If P >= tau_high: CORRECT; If P <= tau_low: NEEDS_PRACTICE; If tau_low < P < tau_high: UNCERTAIN",
+    "lowConfidenceGuard": "If confidence < min_confidence (0.60): UNCERTAIN",
+    "safetyRule": "Never fabricate pronunciation results. Fallback to UNCERTAIN on any preprocessing or decoding rejection."
+  },
+  "clinicalNotice": "Audio-based practice feedback. Confirm pronunciation with your speech therapist. Not clinically validated."
+}

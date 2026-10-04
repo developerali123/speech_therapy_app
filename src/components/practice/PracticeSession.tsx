@@ -211,6 +211,7 @@ export const PracticeSessionComponent: React.FC<PracticeSessionProps> = ({
           <SpeechRecorder
             onSaveAttempt={handleSaveRecording}
             targetText={exercise.targetText}
+            targetUnits={targetUnits}
             exerciseId={exercise.id}
             onNextAttempt={() => {
               if (totalAttempts >= targetAttempts) {
