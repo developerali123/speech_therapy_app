@@ -1,5 +1,6 @@
 import { TrainingExample, Recording, Exercise, TrainingExclusionReason } from '../types';
 import { getStore, STORES } from './indexedDb';
+import { updateRecording } from './recordingRepository';
 
 export async function saveTrainingExample(example: TrainingExample): Promise<void> {
   const { store } = await getStore(STORES.TRAINING_EXAMPLES, 'readwrite');
@@ -145,3 +146,38 @@ export async function syncAllTrainingExamples(
 
   return results;
 }
+
+/**
+ * Adds a therapist-reviewed recording to the training dataset candidate pool.
+ * Does NOT automatically trigger model retraining.
+ */
+export async function addRecordingToTrainingDataset(
+  recording: Recording,
+  exercise?: Exercise
+): Promise<TrainingExample> {
+  const updatedRecording: Recording = {
+    ...recording,
+    excludedFromTraining: false,
+    trainingExclusionReason: undefined
+  };
+  await updateRecording(updatedRecording);
+  return syncRecordingToTrainingExample(updatedRecording, exercise);
+}
+
+/**
+ * Excludes a recording from the training dataset with a specified reason.
+ */
+export async function excludeRecordingFromTrainingDataset(
+  recording: Recording,
+  reason: TrainingExclusionReason,
+  exercise?: Exercise
+): Promise<TrainingExample> {
+  const updatedRecording: Recording = {
+    ...recording,
+    excludedFromTraining: true,
+    trainingExclusionReason: reason
+  };
+  await updateRecording(updatedRecording);
+  return syncRecordingToTrainingExample(updatedRecording, exercise);
+}
+

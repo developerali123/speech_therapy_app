@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Recording, TherapistResult, TrainingExclusionReason } from '../../types';
 import { AudioPlayer } from '../audio/AudioPlayer';
+import { MlTherapistComparisonCard } from '../therapist/MlTherapistComparisonCard';
 import { formatTime } from '../../utils/dates';
 import {
   CheckCircle2,
@@ -235,6 +236,42 @@ export const PracticeAttempt: React.FC<PracticeAttemptProps> = ({
         <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>Therapist Confirmed: {justConfirmed}</span>
+        </div>
+      )}
+
+      {/* ML vs Therapist Comparison Card (For every reviewed recording) */}
+      {recording.therapistResult && (
+        <div className="pt-1">
+          <MlTherapistComparisonCard
+            recording={recording}
+            exercise={
+              exerciseName || targetText
+                ? {
+                    id: recording.exerciseId,
+                    name: exerciseName || displayTitle,
+                    targetText: displayTarget,
+                    targetUnits:
+                      recording.unitResults?.map((u) => u.target || u.unit) || [displayTarget],
+                    description: '',
+                    isActive: true,
+                    createdAt: ''
+                  }
+                : undefined
+            }
+            showAudioPlayer={false}
+            onDatasetUpdate={async (updated) => {
+              if (onReview) {
+                await onReview(
+                  updated.id,
+                  updated.therapistResult!,
+                  updated.therapistRemarks,
+                  updated.excludedFromTraining,
+                  updated.trainingExclusionReason,
+                  updated.therapistUnitReviews
+                );
+              }
+            }}
+          />
         </div>
       )}
 

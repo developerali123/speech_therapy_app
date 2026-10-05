@@ -313,3 +313,50 @@ export interface MLLabelledDatasetExport {
   };
   examples: MLLabelledDatasetExportItem[];
 }
+
+// =========================================================================
+// Therapist Feedback Loop & Agreement Metrics
+// =========================================================================
+export interface TargetAgreementMetrics {
+  target: string;
+  totalReviewed: number;
+  agreementCount: number;
+  disagreementCount: number;
+  agreementRate: number; // 0-100 percentage
+  mlCorrectTherapistCorrect: number; // True Positive
+  mlIncorrectTherapistIncorrect: number; // True Negative
+  mlFalsePositives: number; // ML says CORRECT, Therapist says INCORRECT
+  mlFalseNegatives: number; // ML says INCORRECT/NEEDS_PRACTICE, Therapist says CORRECT
+  uncertainCount: number;
+  uncertainRate: number; // 0-100 percentage
+}
+
+export interface ModelAgreementMetrics {
+  totalReviewed: number;
+  agreementCount: number;
+  disagreementCount: number;
+  agreementRate: number; // 0-100 percentage
+  mlCorrectTherapistCorrect: number; // True Positive
+  mlIncorrectTherapistIncorrect: number; // True Negative
+  mlFalsePositives: number; // ML says CORRECT, Therapist says INCORRECT
+  mlFalseNegatives: number; // ML says INCORRECT/NEEDS_PRACTICE, Therapist says CORRECT
+  uncertainCount: number;
+  uncertainRate: number; // 0-100 percentage
+  modelVersion?: string;
+  availableModelVersions: string[];
+  byTarget: Record<string, TargetAgreementMetrics>;
+}
+
+export interface MlVsTherapistComparison {
+  expected: string;
+  mlResult: string;
+  mlConfidence: number | null;
+  therapistResult: TherapistResult;
+  isAgreement: boolean;
+  differenceText: string;
+  isFalsePositive: boolean;
+  isFalseNegative: boolean;
+  isUncertain: boolean;
+  modelVersion: string;
+}
+

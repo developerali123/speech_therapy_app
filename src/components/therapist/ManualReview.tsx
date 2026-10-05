@@ -119,6 +119,38 @@ export const ManualReview: React.FC<ManualReviewProps> = ({
           <AudioPlayer blob={recording.blob} recordedDuration={recording.duration} />
         </div>
 
+        {/* ML Prediction Reference (Non-binding reference; Therapist is ground truth) */}
+        <div className="p-3 bg-slate-50 border border-slate-200/90 rounded-xl space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-600">ML Prediction:</span>
+            <span className="font-mono text-[10px] text-slate-500">
+              Model: {recording.modelVersion || 'xlsr-v1.0-linear-onnx'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={clsx(
+                'px-2 py-0.5 rounded text-xs font-bold',
+                recording.autoResult === 'CORRECT'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : recording.autoResult === 'INCORRECT' || recording.autoResult === 'NEEDS_PRACTICE'
+                  ? 'bg-rose-100 text-rose-800'
+                  : 'bg-amber-100 text-amber-800'
+              )}
+            >
+              {recording.autoResult || 'None'}
+            </span>
+            {(typeof recording.confidence === 'number' || typeof recording.similarity === 'number') && (
+              <span className="text-xs text-slate-500 font-mono">
+                Confidence: {Math.round(((recording.confidence ?? recording.similarity) ?? 0) * 100)}%
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] text-slate-500 italic pt-0.5">
+            Notice: The therapist's confirmed assessment is the ground truth. The ML model prediction must NEVER automatically become a therapist label.
+          </p>
+        </div>
+
         {/* Therapist Assessment: Radio Options */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">

@@ -817,3 +817,71 @@ In Phase 15, the Speech Practice Assistant was extended from single-unit assessm
 - **TypeScript Typecheck:** `npx tsc --noEmit` verified with **0 errors**.
 - **Production Build:** `npm run build` completed successfully in under 4 seconds.
 
+---
+
+## 23. Therapist Feedback Loop & Model Performance Architecture
+
+### Overview
+In Phase 16, a complete clinical therapist feedback loop and local ML evaluation harness was added to the Speech Practice Assistant.
+
+### Core Principles & Architecture
+
+1. **Ground Truth Inviolability:**
+   - The therapist's confirmed assessment is the absolute clinical ground truth.
+   - The ML model prediction **NEVER** automatically becomes a therapist label or overrides clinician judgment.
+   - When therapist-reviewed recordings are designated as dataset candidates, the training example label is strictly bound to `recording.therapistResult` (never `recording.autoResult`).
+
+2. **Side-by-Side ML vs. Therapist Comparison:**
+   - Implemented in `MlTherapistComparisonCard.tsx` and presented for every therapist-reviewed recording in the practice review interface and the `/model-performance` dashboard.
+   - Explicitly displays:
+     - **Expected Target:** (e.g. `کا`)
+     - **ML Prediction:** `CORRECT` / `INCORRECT` with confidence percentage (e.g., `87%`) and evaluated model version (`xlsr-v1.0-linear-onnx`).
+     - **Therapist Verdict:** `CORRECT` / `INCORRECT` / `UNCERTAIN` with reviewer notes.
+     - **Difference Verdict:** Explicitly flags `"ML agreed with therapist."` or `"ML disagreed with therapist."` with clear visual cues.
+
+3. **Validation Metrics Harness (`src/utils/modelAgreement.ts`):**
+   - Implements pure, deterministic calculation functions:
+     - `agreementCount`: Total recordings where ML and therapist concur.
+     - `disagreementCount`: Total recordings where ML and therapist differ.
+     - `mlCorrectWhenTherapistCorrect`: True Positives (both say `CORRECT`).
+     - `mlIncorrectWhenTherapistIncorrect`: True Negatives (both say `INCORRECT`).
+     - `mlFalsePositives`: ML says `CORRECT` but therapist diagnosed `INCORRECT`.
+     - `mlFalseNegatives`: ML says `INCORRECT` but therapist confirmed `CORRECT`.
+     - `uncertainRate`: Rate of ambiguous/borderline predictions requiring clinician review.
+   - **Important Disclaimer & Guardrail:** Metrics are strictly framed as *Local Labelled Dataset Validation Metrics*, preventing misrepresentation as universal clinical claims.
+
+4. **Model Versioning (`modelVersion`):**
+   - Every ML assessment records `modelVersion` (defaults to `xlsr-v1.0-linear-onnx`).
+   - The metrics engine supports filtering by model version, preventing cross-model statistical pollution when new models are tested.
+
+5. **Dataset Candidate Management (`src/storage/trainingDatasetRepository.ts`):**
+   - Therapist-reviewed recordings can be added as training dataset candidates via `[Add to Training Dataset]`.
+   - Supports inclusion, exclusion, and mandatory exclusion reasons (e.g., *Background noise*, *Clinician prompt overlap*, *Ambiguous pronunciation*, *Unverified clinician take*).
+   - **No Automatic Retraining:** Adding an example to the dataset marks it as a candidate without triggering automated retraining in the background.
+
+6. **Local Privacy:**
+   - All audio blobs, recordings, and dataset candidate flags remain exclusively in client-side IndexedDB unless explicitly exported by the clinician.
+
+7. **Dedicated Model Performance Dashboard (`/model-performance`):**
+   - Accessible via Desktop Sidebar (`Model Performance`), `/model-performance` route, and quick link on the Progress Dashboard.
+   - Features:
+     - Summary KPI cards: Agreement %, Reviewed Count, Disagreements, TP, TN, FP, FN, Uncertain Rate.
+     - Model version selector dropdown.
+     - Target breakdown tabs for `کا`, `کی`, `کے`, `کو`.
+     - Filterable comparison list (All, Disagreements only, Agreements only, Training candidates only).
+
+8. **Automated Vitest Test Suite (`tests/modelAgreement.test.ts`):**
+   - 12 comprehensive unit tests covering:
+     - Agreement & disagreement detection.
+     - Metric computations (TP, TN, FP, FN, agreement rates).
+     - Model version isolation.
+     - Dataset candidate inclusion & exclusion with reasons.
+     - Per-target metric breakdowns for all four targets.
+     - Ground truth inviolability under conflicting model predictions.
+
+### Final Verification Results
+- **Automated Tests:** `npm test` passed **17 test files** and **174 automated tests** with 0 failures.
+- **TypeScript Typecheck:** `npx tsc --noEmit` verified with **0 errors**.
+- **Production Build:** `npm run build` succeeded cleanly with all assets compiled.
+
+

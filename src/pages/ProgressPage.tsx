@@ -26,7 +26,8 @@ import {
   ChevronRight,
   Filter,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Cpu
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -94,15 +95,26 @@ export const ProgressPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleExportBackup}
-          disabled={isExporting}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition active:scale-95 cursor-pointer shadow-xs self-start sm:self-auto"
-        >
-          <Download className="w-3.5 h-3.5 text-teal-600" />
-          <span>{isExporting ? 'Exporting...' : 'Export Progress Data'}</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => navigate('/model-performance')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/80 rounded-xl hover:bg-indigo-100/70 transition active:scale-95 cursor-pointer shadow-xs"
+          >
+            <Cpu className="w-3.5 h-3.5 text-indigo-600" />
+            <span>ML vs Therapist Validation</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportBackup}
+            disabled={isExporting}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition active:scale-95 cursor-pointer shadow-xs"
+          >
+            <Download className="w-3.5 h-3.5 text-teal-600" />
+            <span>{isExporting ? 'Exporting...' : 'Export Progress Data'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Mandatory Clinical Limitation Notice */}
